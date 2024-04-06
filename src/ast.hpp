@@ -47,10 +47,10 @@ public:
   }
 
   int GenIR(std::shared_ptr<std::string> irp) const override {
-    if (ident != "main") {
-      std::cerr << "error: name of function is not \"main\"" << std::endl;
-      exit(-1);
-    }
+    // if (ident != "main") {
+    //   std::cerr << "error: name of function is not \"main\"" << std::endl;
+    //   exit(-1);
+    // }
 
     auto irp1 = std::make_shared<std::string>();
     if (func_type->GenIR(irp1) < 0) {
