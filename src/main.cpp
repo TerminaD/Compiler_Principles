@@ -1,5 +1,6 @@
 #include <cassert>
 #include <cstdio>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include "ast.hpp"
@@ -32,8 +33,21 @@ int main(int argc, const char *argv[]) {
   assert(!ret);
 
   // Dump AST
+  cout << "AST Dump: " << endl;
   ast->Dump();
   cout << endl;
-  
+
+  // Print & Save IR
+  auto irp = make_shared<string>();
+  int ir_status = ast->GenIR(irp);
+
+  if (ir_status < 0) {
+    cerr << "error: in generating IR" << endl;
+    exit(-1);
+  }
+
+  cout << *irp << endl;
+  std::ofstream out(output);
+  out << *irp;
   return 0;
 }
