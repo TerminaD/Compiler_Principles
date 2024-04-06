@@ -33,9 +33,9 @@ int main(int argc, const char *argv[]) {
   assert(!ret);
 
   // Dump AST
-  cout << "AST Dump: " << endl;
-  ast->Dump();
-  cout << endl;
+  // cout << "AST Dump: " << endl;
+  // ast->Dump();
+  // cout << endl;
 
   // Print & Save IR
   auto irp = make_shared<string>();
@@ -46,7 +46,7 @@ int main(int argc, const char *argv[]) {
     exit(-1);
   }
 
-  cout << *irp << endl;
+  // cout << *irp << endl;
   std::ofstream out(output);
   out << *irp;
   return 0;
