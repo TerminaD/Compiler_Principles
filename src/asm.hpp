@@ -5,7 +5,7 @@
 #include "koopa.h"
 
 
-int generate_mem_ir(const char *irp, std::ofstream &out);
+int generate_asm(const char *irp, std::ofstream &out);
 
 // Visit a program
 void Visit(const koopa_raw_program_t &program, std::ofstream &out);

@@ -2,10 +2,10 @@
 #include <iostream>
 
 #include "koopa.h"
-#include "ir.hpp"
+#include "asm.hpp"
 
 
-int generate_mem_ir(const char *irp, std::ofstream &out) {
+int generate_asm(const char *irp, std::ofstream &out) {
   // Convert IR to memory form
   koopa_program_t program;
   koopa_error_code_t koopa_ret = koopa_parse_from_string(irp, &program);

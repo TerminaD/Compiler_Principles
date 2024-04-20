@@ -6,7 +6,7 @@
 #include <memory>
 
 #include "ast.hpp"
-#include "ir.hpp"
+#include "asm.hpp"
 
 using namespace std;
 
@@ -62,7 +62,7 @@ int main(int argc, const char *argv[]) {
     }
 
     std::ofstream out(output);
-    generate_mem_ir(irp->c_str(), out);
+    generate_asm(irp->c_str(), out);
 
   } else {
     cerr << "error: mode not supported" << endl;
