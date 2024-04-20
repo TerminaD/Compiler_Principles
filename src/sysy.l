@@ -15,7 +15,7 @@ using namespace std;
 
 %}
 
-/* TODO: 空白符和注释 */
+/* 空白符和注释 */
 WhiteSpace    [ \t\n\r]*
 LineComment   "//".*	
 

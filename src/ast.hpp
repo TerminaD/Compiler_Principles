@@ -5,6 +5,14 @@
 #include <iostream>
 
 
+// 一元运算符的种类
+enum unary_op_t {
+  positive_op,
+  negative_op,
+  not_op
+};
+
+
 // 所有 AST 的基类
 class BaseAST {
 public:
@@ -111,23 +119,67 @@ public:
 
 class StmtAST : public BaseAST {
 public:
-  std::unique_ptr<BaseAST> number;
+  std::unique_ptr<BaseAST> exp;
 
   void Dump() const override {
     std::cout << "StmtAST { ";
+    exp->Dump();
+    std::cout << " }";
+  }
+
+  int GenIR(std::shared_ptr<std::string> irp) const override {
+    // TODO
+    return 0;
+  }
+};
+
+
+class ExpAST : public BaseAST {
+public:
+  std::unique_ptr<BaseAST> unary_exp;
+
+  void Dump() const override {
+    std::cout << "ExpAST { ";
+    unary_exp->Dump();
+    std::cout << " }";
+  }
+
+  int GenIR(std::shared_ptr<std::string> irp) const override {
+    // TODO
+    return 0;
+  }
+};
+
+
+class PrimaryExpAST1 : public BaseAST {
+public:
+  std::unique_ptr<BaseAST> exp;
+
+  void Dump() const override {
+    std::cout << "PrimaryExpAST1 { ( ";
+    exp->Dump();
+    std::cout << " ) }";
+  }
+
+  int GenIR(std::shared_ptr<std::string> irp) const override {
+    // TODO
+    return 0;
+  }
+};
+
+
+class PrimaryExpAST2 : public BaseAST {
+public:
+  std::unique_ptr<BaseAST> number;
+
+  void Dump() const override {
+    std::cout << "PrimaryExpAST2 { ";
     number->Dump();
     std::cout << " }";
   }
 
   int GenIR(std::shared_ptr<std::string> irp) const override {
-    auto irp1 = std::make_shared<std::string>();
-
-    if (number->GenIR(irp1) < 0) {
-      std::cerr << "error: in generating IR" << std::endl;
-      exit(-1);
-    }
-
-    *irp = "ret " + *irp1;
+    // TODO
     return 0;
   }
 };
@@ -143,6 +195,64 @@ public:
 
   int GenIR(std::shared_ptr<std::string> irp) const override {
     *irp = std::to_string(int_const);
+    return 0;
+  }
+};
+
+
+class UnaryExpAST1 : public BaseAST {
+public:
+  std::unique_ptr<BaseAST> primary_exp;
+
+  void Dump() const override {
+    std::cout << "UnaryExpAST1 { ";
+    primary_exp->Dump();
+    std::cout << " }";
+  }
+
+  int GenIR(std::shared_ptr<std::string> irp) const override {
+    // TODO
+    return 0;
+  }
+};
+
+
+class UnaryExpAST2 : public BaseAST {
+public:
+  std::unique_ptr<BaseAST> unary_op;
+  std::unique_ptr<BaseAST> unary_exp;
+
+  void Dump() const override {
+    std::cout << "UnaryExpAST2 { ";
+    unary_op->Dump();
+    std::cout << ' ';
+    unary_exp->Dump();
+    std::cout << " }";
+  }
+
+  int GenIR(std::shared_ptr<std::string> irp) const override {
+    // TODO
+    return 0;
+  }
+};
+
+
+class UnaryOpAST : public BaseAST {
+public:
+  unary_op_t op;
+
+  void Dump() const override {
+    std::cout << "UnaryOp { ";
+    switch (op) {
+      case positive_op: std::cout << '+'; break;
+      case negative_op: std::cout << '-'; break;
+      case not_op: std::cout << '!'; break;
+    }
+    std::cout << " }";
+  }
+
+  int GenIR(std::shared_ptr<std::string> irp) const override {
+    // TODO
     return 0;
   }
 };
