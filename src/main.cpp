@@ -36,11 +36,9 @@ int main(int argc, const char *argv[]) {
   assert(!ret);
 
   // Dump AST if in PRINT mode
-  #ifdef PRINT
-    cout << "AST Dump: " << endl;
-    ast->Dump();
-    cout << endl << endl;
-  #endif
+  cout << "AST Dump: " << endl;
+  ast->Dump();
+  cout << endl << endl;
 
   if (strcmp(mode, "-koopa") == 0) {  // IR mode
     auto irp = make_shared<string>();
