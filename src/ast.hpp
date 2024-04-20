@@ -20,7 +20,7 @@ public:
 
   virtual void Dump() const = 0;
 
-  virtual int GenIR(std::shared_ptr<std::string> irp) const = 0;
+  virtual int GenIR(std::shared_ptr<std::string> ir, size_t *reg_ctr) const = 0;
 };
 
 
@@ -34,8 +34,8 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> irp) const override {
-    return func_def->GenIR(irp);
+  int GenIR(std::shared_ptr<std::string> ir, size_t *reg_ctr) const override {
+    return func_def->GenIR(ir, reg_ctr);
   }
 };
 
@@ -54,25 +54,20 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> irp) const override {
-    if (ident != "main") {
-      std::cerr << "error: name of function is not \"main\"" << std::endl;
+  int GenIR(std::shared_ptr<std::string> ir, size_t *reg_ctr) const override {
+    auto ir1 = std::make_shared<std::string>();
+    if (func_type->GenIR(ir1, reg_ctr) < 0) {
+      std::cerr << "error: func_type in FuncDefAST" << std::endl;
       exit(-1);
     }
 
-    auto irp1 = std::make_shared<std::string>();
-    if (func_type->GenIR(irp1) < 0) {
-      std::cerr << "error: in generating IR" << std::endl;
+    auto ir2 = std::make_shared<std::string>();
+    if (block->GenIR(ir2, reg_ctr) < 0) {
+      std::cerr << "error: block in FuncDefAST" << std::endl;
       exit(-1);
     }
 
-    auto irp2 = std::make_shared<std::string>();
-    if (block->GenIR(irp2) < 0) {
-      std::cerr << "error: in generating IR" << std::endl;
-      exit(-1);
-    }
-
-    *irp = "fun @" + ident + "(): " + *irp1 + " { " + *irp2 + " }";
+    *ir = "fun @" + ident + "(): " + *ir1 + " { " + *ir2 + " }";
     return 0;
   }
 };
@@ -86,8 +81,13 @@ public:
     std::cout << "FuncTypeAST { " << func_type << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> irp) const override {
-    *irp = "i32";
+  int GenIR(std::shared_ptr<std::string> ir, size_t *reg_ctr) const override {
+    if (func_type == "int")
+      *ir = "i32";
+    else {
+      std::cerr << "error: non-int data type not supported" << std::endl;
+      exit(-1);
+    }
     return 0;
   }
 };
@@ -103,15 +103,14 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> irp) const override {
-    auto irp1 = std::make_shared<std::string>();
-
-    if (stmt->GenIR(irp1) < 0) {
-      std::cerr << "error: in generating IR" << std::endl;
+  int GenIR(std::shared_ptr<std::string> ir, size_t *reg_ctr) const override {
+    auto ir1 = std::make_shared<std::string>();
+    if (stmt->GenIR(ir1, reg_ctr) < 0) {
+      std::cerr << "error: stmt in BlockAST" << std::endl;
       exit(-1);
     }
 
-    *irp = "\%entry: " + *irp1;
+    *ir = "\%entry: " + *ir1;
     return 0;
   }
 };
@@ -127,9 +126,8 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> irp) const override {
-    // TODO
-    return 0;
+  int GenIR(std::shared_ptr<std::string> ir, size_t *reg_ctr) const override {
+    return exp->GenIR(ir, reg_ctr);
   }
 };
 
@@ -144,9 +142,8 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> irp) const override {
-    // TODO
-    return 0;
+  int GenIR(std::shared_ptr<std::string> ir, size_t *reg_ctr) const override {
+    return unary_exp->GenIR(ir, reg_ctr);
   }
 };
 
@@ -161,9 +158,8 @@ public:
     std::cout << " ) }";
   }
 
-  int GenIR(std::shared_ptr<std::string> irp) const override {
-    // TODO
-    return 0;
+  int GenIR(std::shared_ptr<std::string> ir, size_t *reg_ctr) const override {
+    return exp->GenIR(ir, reg_ctr);
   }
 };
 
@@ -178,9 +174,8 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> irp) const override {
-    // TODO
-    return 0;
+  int GenIR(std::shared_ptr<std::string> ir, size_t *reg_ctr) const override {
+    return number->GenIR(ir, reg_ctr);
   }
 };
 
@@ -193,8 +188,8 @@ public:
     std::cout << "NumberAST { " << int_const << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> irp) const override {
-    *irp = std::to_string(int_const);
+  int GenIR(std::shared_ptr<std::string> ir, size_t *reg_ctr) const override {
+    *ir = std::to_string(int_const);
     return 0;
   }
 };
@@ -210,9 +205,8 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> irp) const override {
-    // TODO
-    return 0;
+  int GenIR(std::shared_ptr<std::string> ir, size_t *reg_ctr) const override {
+    return primary_exp->GenIR(ir, reg_ctr);
   }
 };
 
@@ -230,8 +224,54 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> irp) const override {
-    // TODO
+  int GenIR(std::shared_ptr<std::string> ir, size_t *reg_ctr) const override {
+    auto ir1 = std::make_shared<std::string>();
+    int ret = unary_op->GenIR(ir1, reg_ctr);
+    if (ret < 0) {
+      std::cerr << "error: unary_op in UnaryExpAST2" << std::endl;
+      exit(-1);
+    }
+
+    auto ir2 = std::make_shared<std::string>();
+    if (unary_exp->GenIR(ir2, reg_ctr) < 0) {
+      std::cerr << "error: unary_exp in UnaryExpAST2" << std::endl;
+      exit(-1);
+    }
+
+    if (*reg_ctr != 0)
+      *ir = *ir2;
+    
+    *ir += ("%" + std::to_string(*reg_ctr) + " = ");
+
+    switch (ret) {
+      case 1:
+        *ir += "add 0, ";
+        break;
+
+      case 2:
+        *ir += "sub 0, ";
+        break;
+
+      case 3:
+        *ir += "eq 0, ";
+        break;
+
+      default:
+        std::cerr << "error: undefined unary operator in UnaryExpAST2" << std::endl;
+        exit(-1);
+    }
+
+    if (*reg_ctr == 0) {
+      *ir += *ir2;
+      *ir += "\n";
+    } else {
+      *ir += ("%" + std::to_string(*reg_ctr-1) + "\n");
+    }
+      
+    (*reg_ctr) += 1;
+
+    // std::cout << *ir << std::endl;
+
     return 0;
   }
 };
@@ -251,8 +291,20 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> irp) const override {
-    // TODO
-    return 0;
+  int GenIR(std::shared_ptr<std::string> ir, size_t *reg_ctr) const override {
+    switch (op) {
+      case positive_op:
+        return 1;
+        break;
+      case negative_op:
+        return 2;
+        break;
+      case not_op:
+        return 3;
+        break;
+      default:
+        std::cerr << "error: undefined unary operator" << std::endl;
+        exit(-1);
+    }
   }
 };

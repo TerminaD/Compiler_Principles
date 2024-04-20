@@ -1,6 +1,8 @@
 #include <cassert>
+#include <cstddef>
 #include <cstdio>
 #include <cstring>
+#include <sstream>
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -43,26 +45,26 @@ int main(int argc, const char *argv[]) {
   #endif
 
   if (strcmp(mode, "-koopa") == 0) {  // IR mode
-    auto irp = make_shared<string>();
-    int ir_status = ast->GenIR(irp);
-    if (ir_status < 0) {
-      cerr << "error: in generating IR" << endl;
+    auto ir = make_shared<string>();
+    size_t *reg_ctr = new size_t;
+    if (ast->GenIR(ir, reg_ctr) < 0) {
+      cerr << "error in generating AST" << endl;
       exit(-1);
     }
 
     std::ofstream out(output);
-    out << *irp;
+    out << *ir;
 
   } else if (strcmp(mode, "-riscv") == 0) { // Asm mode
-    auto irp = make_shared<string>();
-    int ir_status = ast->GenIR(irp);
-    if (ir_status < 0) {
-      cerr << "error: in generating IR" << endl;
+    auto ir = make_shared<string>();
+    size_t *reg_ctr = new size_t;
+    if (ast->GenIR(ir, reg_ctr) < 0) {
+      cerr << "error in generating AST" << endl;
       exit(-1);
     }
 
     std::ofstream out(output);
-    generate_asm(irp->c_str(), out);
+    generate_asm(ir->c_str(), out);
 
   } else {
     cerr << "error: mode not supported" << endl;
