@@ -46,8 +46,8 @@ int main(int argc, const char *argv[]) {
 
   if (strcmp(mode, "-koopa") == 0) {  // IR mode
     auto ir = make_shared<string>();
-    size_t *reg_ctr = new size_t;
-    if (ast->GenIR(ir, reg_ctr) < 0) {
+    int *global_ident_ctr = new int;
+    if (ast->GenIR(ir, global_ident_ctr) < 0) {
       cerr << "error in generating AST" << endl;
       exit(-1);
     }
@@ -57,8 +57,8 @@ int main(int argc, const char *argv[]) {
 
   } else if (strcmp(mode, "-riscv") == 0) { // Asm mode
     auto ir = make_shared<string>();
-    size_t *reg_ctr = new size_t;
-    if (ast->GenIR(ir, reg_ctr) < 0) {
+    int *global_ident_ctr = new int;
+    if (ast->GenIR(ir, global_ident_ctr) < 0) {
       cerr << "error in generating AST" << endl;
       exit(-1);
     }
