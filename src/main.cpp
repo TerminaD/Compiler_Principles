@@ -1,9 +1,12 @@
 #include <cassert>
 #include <cstdio>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <memory>
+
 #include "ast.hpp"
+#include "ir.hpp"
 
 using namespace std;
 
@@ -32,22 +35,39 @@ int main(int argc, const char *argv[]) {
   auto ret = yyparse(ast);
   assert(!ret);
 
-  // Dump AST
-  cout << "AST Dump: " << endl;
-  ast->Dump();
-  cout << endl;
+  // Dump AST if in PRINT mode
+  #ifdef PRINT
+    cout << "AST Dump: " << endl;
+    ast->Dump();
+    cout << endl << endl;
+  #endif
 
-  // Print & Save IR
-  auto irp = make_shared<string>();
-  int ir_status = ast->GenIR(irp);
+  if (strcmp(mode, "-koopa") == 0) {  // IR mode
+    auto irp = make_shared<string>();
+    int ir_status = ast->GenIR(irp);
+    if (ir_status < 0) {
+      cerr << "error: in generating IR" << endl;
+      exit(-1);
+    }
 
-  if (ir_status < 0) {
-    cerr << "error: in generating IR" << endl;
+    std::ofstream out(output);
+    out << *irp;
+
+  } else if (strcmp(mode, "-riscv") == 0) { // Asm mode
+    auto irp = make_shared<string>();
+    int ir_status = ast->GenIR(irp);
+    if (ir_status < 0) {
+      cerr << "error: in generating IR" << endl;
+      exit(-1);
+    }
+
+    std::ofstream out(output);
+    generate_mem_ir(irp->c_str(), out);
+
+  } else {
+    cerr << "error: mode not supported" << endl;
     exit(-1);
   }
 
-  cout << *irp << endl;
-  std::ofstream out(output);
-  out << *irp;
   return 0;
 }
