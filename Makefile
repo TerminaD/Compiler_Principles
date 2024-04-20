@@ -23,8 +23,8 @@ ifeq ($(DEBUG), 0)
 CFLAGS += -O2
 CXXFLAGS += -O2
 else
-CFLAGS += -g -O0
-CXXFLAGS += -g -O0
+CFLAGS += -g -O0 -DPRINT
+CXXFLAGS += -g -O0 -DPRINT
 endif
 
 # Compilers

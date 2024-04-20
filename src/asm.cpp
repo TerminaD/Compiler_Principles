@@ -26,7 +26,9 @@ int generate_asm(const char *irp, std::ofstream &out) {
 void Visit(const koopa_raw_program_t &program, std::ofstream &out) {
   // 执行一些其他的必要操作
   // .data 存放数据？暂时不用
-  std::cout << "visiting program" << std::endl;
+  #ifdef PRINT
+    std::cout << "visiting program" << std::endl;
+  #endif
 
   out << "  .text" << std::endl;
   out << "  .globl";
@@ -40,22 +42,24 @@ void Visit(const koopa_raw_program_t &program, std::ofstream &out) {
 
 // 访问 raw slice
 void Visit(const koopa_raw_slice_t &slice, std::ofstream &out) {
-  const char *kind_str;
-  switch (slice.kind) {
-    case KOOPA_RSIK_FUNCTION:
-      kind_str = "func";
-      break;
-    case KOOPA_RSIK_BASIC_BLOCK:
-      kind_str = "bb";
-      break;
-    case KOOPA_RSIK_VALUE:
-      kind_str = "val";
-      break;
-    default:
-      kind_str = "unsupported";
-      break;
-  }
-  std::cout << "visiting slice of type: " << kind_str << ", of len: " <<slice.len << std::endl; 
+  #ifdef PRINT
+    const char *kind_str;
+    switch (slice.kind) {
+      case KOOPA_RSIK_FUNCTION:
+        kind_str = "func";
+        break;
+      case KOOPA_RSIK_BASIC_BLOCK:
+        kind_str = "bb";
+        break;
+      case KOOPA_RSIK_VALUE:
+        kind_str = "val";
+        break;
+      default:
+        kind_str = "unsupported";
+        break;
+    }
+    std::cout << "visiting slice of type: " << kind_str << ", of len: " <<slice.len << std::endl; 
+  #endif
 
   for (size_t i = 0; i < slice.len; ++i) {
     auto ptr = slice.buffer[i];
@@ -89,7 +93,9 @@ void Visit(const koopa_raw_function_t &func, std::ofstream &out) {
   //! There is only 1 function for now, thus this implementation is ok.
   //! For more than 1 functions, a rewrite is needed!
 
-  std::cout << "visiting function: " << func->name << std::endl;
+  #ifdef PRINT
+    std::cout << "visiting function: " << func->name << std::endl;
+  #endif
 
   // Write function name to `globl`, `+1` to skip @ at the beginning of func name
   auto func_name = func->name + 1;
@@ -107,7 +113,9 @@ void Visit(const koopa_raw_basic_block_t &bb, std::ofstream &out) {
   // 执行一些其他的必要操作
   // ...
 
-  std::cout << "visiting basic block: " << bb->name << std::endl;
+  #ifdef PRINT
+    std::cout << "visiting basic block: " << bb->name << std::endl;
+  #endif  
 
   // 访问所有指令
   Visit(bb->insts, out);
@@ -115,19 +123,21 @@ void Visit(const koopa_raw_basic_block_t &bb, std::ofstream &out) {
 
 // 访问指令
 void Visit(const koopa_raw_value_t &value, std::ofstream &out) {
-  const char *kind_str;
-  switch (value->kind.tag) {
-    case KOOPA_RVT_RETURN:
-      kind_str = "return";
-      break;
-    case KOOPA_RVT_INTEGER:
-      kind_str = "integer";
-      break;
-    default:
-      kind_str = "unsupported";
-      break;
-  }
-  std::cout << "visiting value of kind: " << kind_str << std::endl;
+  #ifdef PRINT
+    const char *kind_str;
+    switch (value->kind.tag) {
+      case KOOPA_RVT_RETURN:
+        kind_str = "return";
+        break;
+      case KOOPA_RVT_INTEGER:
+        kind_str = "integer";
+        break;
+      default:
+        kind_str = "unsupported";
+        break;
+    }
+    std::cout << "visiting value of kind: " << kind_str << std::endl;
+  #endif
 
   // 根据指令类型判断后续需要如何访问
   const auto &kind = value->kind;
@@ -152,7 +162,9 @@ void Visit(const koopa_raw_value_t &value, std::ofstream &out) {
 // 视需求自行实现
 // Return instructions
 void Visit(const koopa_raw_return_t &ret, std::ofstream &out) {
-  std::cout << "visiting return instruction" << std::endl;
+  #ifdef PRINT
+    std::cout << "visiting return instruction" << std::endl;
+  #endif
 
   Visit(ret.value, out);
 
@@ -163,7 +175,9 @@ void Visit(const koopa_raw_return_t &ret, std::ofstream &out) {
 void Visit(const koopa_raw_integer_t &integer, std::ofstream &out) {
   auto int_val = integer.value;
 
-  std::cout << "visiting integer of value: " << int_val << std::endl;
+  #ifdef PRINT
+    std::cout << "visiting integer of value: " << int_val << std::endl;
+  #endif
 
   out << "  li a0, " << int_val << std::endl;
 }
