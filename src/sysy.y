@@ -37,12 +37,12 @@ using namespace std;
 
 // lexer 返回的所有 token 种类的声明
 // 注意 IDENT 和 INT_CONST 会返回 token 的值, 分别对应 str_val 和 int_val
-%token INT RETURN
+%token INT RETURN LESSEQUAL GREATEREQUAL EQUAL NOTEQUAL ANDOP OROP
 %token <str_val> IDENT
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
-%type <ast_val> FuncDef FuncType Block Stmt Number Exp PrimaryExp UnaryExp UnaryOp AddExp MulExp BinPriOp BinOp
+%type <ast_val> FuncDef FuncType Block Stmt Number Exp PrimaryExp UnaryExp UnaryOp AddExp MulExp BinPriOp BinOp LOrExp RelExp EqExp LAndExp RelOp EqOp
 
 %%
 
@@ -104,9 +104,9 @@ Stmt
   ;
 
 Exp
-  : AddExp {
+  : LOrExp {
     auto ast = new ExpAST();
-    ast->add_exp = unique_ptr<BaseAST>($1);
+    ast->l_or_exp = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   ;
@@ -194,6 +194,64 @@ AddExp
   }
   ;
 
+RelExp
+  : AddExp {
+    auto ast = new RelExpAST1();
+    ast->add_exp = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | RelExp RelOp AddExp {
+    auto ast = new RelExpAST2();
+    ast->rel_exp = unique_ptr<BaseAST>($1);
+    ast->rel_op = unique_ptr<BaseAST>($2);
+    ast->add_exp = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  ;
+
+EqExp
+  : RelExp {
+    auto ast = new EqExpAST1();
+    ast->rel_exp = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | EqExp EqOp RelExp {
+    auto ast = new EqExpAST2();
+    ast->eq_exp = unique_ptr<BaseAST>($1);
+    ast->eq_op = unique_ptr<BaseAST>($2);
+    ast->rel_exp = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  ;
+
+LAndExp
+  : EqExp {
+    auto ast = new LAndExpAST1();
+    ast->eq_exp = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | LAndExp ANDOP EqExp {
+    auto ast = new LAndExpAST2();
+    ast->l_and_exp = unique_ptr<BaseAST>($1);
+    ast->eq_exp = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  ;
+
+LOrExp
+  : LAndExp {
+    auto ast = new LOrExpAST1();
+    ast->l_and_exp = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | LOrExp OROP LAndExp {
+    auto ast = new LOrExpAST2();
+    ast->l_or_exp = unique_ptr<BaseAST>($1);
+    ast->l_and_exp = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  ;
+
 BinPriOp
   : '*' {
     auto ast = new BinPriOpAST();
@@ -221,6 +279,42 @@ BinOp
   | '-' {
     auto ast = new BinOpAST();
     ast->op = sub_op;
+    $$ = ast;
+  }
+  ;
+
+RelOp
+  : '<' {
+    auto ast = new RelOpAST();
+    ast->op = less_op;
+    $$ = ast;
+  }
+  | '>' {
+    auto ast = new RelOpAST();
+    ast->op = greater_op;
+    $$ = ast;
+  }
+  | LESSEQUAL {
+    auto ast = new RelOpAST();
+    ast->op = less_equal_op;
+    $$ = ast;
+  }
+  | GREATEREQUAL {
+    auto ast = new RelOpAST();
+    ast->op = greater_equal_op;
+    $$ = ast;
+  }
+  ;
+
+EqOp
+  : EQUAL {
+    auto ast = new EqOpAST();
+    ast->op = equal_op;
+    $$ = ast;
+  }
+  | NOTEQUAL {
+    auto ast = new EqOpAST();
+    ast->op = not_equal_op;
     $$ = ast;
   }
   ;
