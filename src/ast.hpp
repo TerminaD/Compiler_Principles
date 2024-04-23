@@ -810,7 +810,7 @@ public:
 
     // a && b <==> (a & b) != 0
     oss << name1 << " = and " << l_and_exp->name << ", " << eq_exp->name << "\n";
-    oss << name << " = ne 0, " << name1 << "\n";
+    oss << name << " = eq 0, " << name1 << "\n";
 
     return 0;
   }
