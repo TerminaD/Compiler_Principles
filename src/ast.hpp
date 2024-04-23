@@ -804,10 +804,13 @@ public:
       exit(-1);
     }
 
-    name = '%' + std::to_string(*global_name_ctr);
-    *global_name_ctr += 1;
+    auto name1 = '%' + std::to_string(*global_name_ctr);
+    name = '%' + std::to_string(*global_name_ctr + 1);
+    *global_name_ctr += 2;
 
-    oss << name << " = and " << l_and_exp->name << ", " << eq_exp->name << "\n";
+    // a && b <==> (a & b) != 0
+    oss << name1 << " = and " << l_and_exp->name << ", " << eq_exp->name << "\n";
+    oss << name << " = ne 0, " << name1 << "\n";
 
     return 0;
   }
@@ -867,10 +870,13 @@ public:
       exit(-1);
     }
 
-    name = '%' + std::to_string(*global_name_ctr);
-    *global_name_ctr += 1;
+    auto name1 = '%' + std::to_string(*global_name_ctr);
+    name = '%' + std::to_string(*global_name_ctr + 1);
+    *global_name_ctr += 2;
 
-    oss << name << " = or " << l_or_exp->name << ", " << l_and_exp->name << "\n";
+    // a || b <==> (a | b) != 0
+    oss << name1 << " = or " << l_or_exp->name << ", " << l_and_exp->name << "\n";
+    oss << name << " = ne 0, " << name1 << "\n";
 
     return 0;
   }
