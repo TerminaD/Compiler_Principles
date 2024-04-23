@@ -44,27 +44,26 @@ int main(int argc, const char *argv[]) {
     cout << endl << endl;
   #endif
 
-  if (strcmp(mode, "-koopa") == 0) {  // IR mode
-    auto ir = make_shared<string>();
-    int *global_ident_ctr = new int;
-    if (ast->GenIR(ir, global_ident_ctr) < 0) {
-      cerr << "error in generating AST" << endl;
-      exit(-1);
-    }
+  // Save IR to string
+  int *global_name_ctr = new int;
+  *global_name_ctr = 0;
 
+  std::ostringstream oss;
+
+  if (ast->GenIR(global_name_ctr, oss)) {
+    cerr << "error: generating AST" << endl;
+    exit(-1);
+  }
+
+  // IR mode
+  if (strcmp(mode, "-koopa") == 0) {  
     std::ofstream out(output);
-    out << *ir;
+    out << oss.str();
 
-  } else if (strcmp(mode, "-riscv") == 0) { // Asm mode
-    auto ir = make_shared<string>();
-    int *global_ident_ctr = new int;
-    if (ast->GenIR(ir, global_ident_ctr) < 0) {
-      cerr << "error in generating AST" << endl;
-      exit(-1);
-    }
-
+  // Asm mode
+  } else if (strcmp(mode, "-riscv") == 0) { 
     std::ofstream out(output);
-    generate_asm(ir->c_str(), out);
+    generate_asm(oss.str().c_str(), out);
 
   } else {
     cerr << "error: mode not supported" << endl;

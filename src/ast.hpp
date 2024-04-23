@@ -1,36 +1,63 @@
+/*
+Generation rules:
+
+CompUnit    ::= FuncDef;
+
+FuncDef     ::= FuncType IDENT "(" ")" Block;
+FuncType    ::= "int";
+
+Block       ::= "{" Stmt "}";
+Stmt        ::= "return" Exp ";";
+
+Exp         ::= LOrExp;
+PrimaryExp  ::= "(" Exp ")" | Number;
+Number      ::= INT_CONST;
+UnaryExp    ::= PrimaryExp | UnaryOp UnaryExp;
+UnaryOp     ::= "+" | "-" | "!";
+MulExp      ::= UnaryExp | MulExp ("*" | "/" | "%") UnaryExp;
+AddExp      ::= MulExp | AddExp ("+" | "-") MulExp;
+RelExp      ::= AddExp | RelExp ("<" | ">" | "<=" | ">=") AddExp;
+EqExp       ::= RelExp | EqExp ("==" | "!=") RelExp;
+LAndExp     ::= EqExp | LAndExp "&&" EqExp;
+LOrExp      ::= LAndExp | LOrExp "||" LAndExp;
+*/
+
+
 #pragma once
 
 #include <memory>
 #include <string>
 #include <iostream>
+#include <sstream>
+#include <typeinfo>
 
 
 enum unary_op_t {
-  positive_op,
+  positive_op = 1,
   negative_op,
   not_op
 };
 
 enum bin_pri_op_t {
-  mul_op,
+  mul_op = 1,
   div_op,
   mod_op
 };
 
 enum bin_op_t {
-  add_op,
+  add_op = 1,
   sub_op
 };
 
 enum rel_op_t {
-  less_op,
+  less_op = 1,
   greater_op,
   less_equal_op,
   greater_equal_op
 };
 
 enum eq_op_t {
-  equal_op,
+  equal_op = 1,
   not_equal_op
 };
 
@@ -42,15 +69,15 @@ public:
 
   virtual void Dump() const = 0;
 
-  virtual int GenIR(std::shared_ptr<std::string> ir, int *gic) = 0;
+  virtual int GenIR(int *global_name_ctr, std::ostringstream &oss) = 0;
 
-  int ident_ctr;
+  std::string name;
 };
 
 
 class CompUnitAST : public BaseAST {
 public:
-  std::unique_ptr<BaseAST> func_def;
+  std::shared_ptr<BaseAST> func_def;
 
   void Dump() const override {
     std::cout << "CompUnitAST { ";
@@ -58,17 +85,20 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    return func_def->GenIR(ir, gic);
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    return func_def->GenIR(global_name_ctr, oss);
   }
 };
 
 
 class FuncDefAST : public BaseAST {
 public:
-  std::unique_ptr<BaseAST> func_type;
+  std::shared_ptr<BaseAST> func_type;
   std::string ident;
-  std::unique_ptr<BaseAST> block;
+  std::shared_ptr<BaseAST> block;
 
   void Dump() const override {
     std::cout << "FuncDefAST { ";
@@ -78,20 +108,26 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    auto ir1 = std::make_shared<std::string>();
-    if (func_type->GenIR(ir1, gic) < 0) {
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    oss << "fun @" << ident << "(): ";
+
+    if (func_type->GenIR(global_name_ctr, oss) < 0) {
       std::cerr << "error: func_type in FuncDefAST" << std::endl;
       exit(-1);
     }
 
-    auto ir2 = std::make_shared<std::string>();
-    if (block->GenIR(ir2, gic) < 0) {
+    oss << " { ";
+
+    if (block->GenIR(global_name_ctr, oss) < 0) {
       std::cerr << "error: block in FuncDefAST" << std::endl;
       exit(-1);
     }
 
-    *ir = "fun @" + ident + "(): " + *ir1 + " { " + *ir2 + " }";
+    oss << " } ";
+
     return 0;
   }
 };
@@ -105,9 +141,12 @@ public:
     std::cout << "FuncTypeAST { " << func_type << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
     if (func_type == "int")
-      *ir = "i32";
+      oss << "i32";
     else {
       std::cerr << "error: non-int data type not supported" << std::endl;
       exit(-1);
@@ -119,7 +158,7 @@ public:
 
 class BlockAST : public BaseAST {
 public:
-  std::unique_ptr<BaseAST> stmt;
+  std::shared_ptr<BaseAST> stmt;
 
   void Dump() const override {
     std::cout << "BlockAST { ";
@@ -127,14 +166,17 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    auto ir1 = std::make_shared<std::string>();
-    if (stmt->GenIR(ir1, gic) < 0) {
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    oss << "\%entry: ";
+
+    if (stmt->GenIR( global_name_ctr, oss) < 0) {
       std::cerr << "error: stmt in BlockAST" << std::endl;
       exit(-1);
     }
 
-    *ir = "\%entry: " + *ir1;
     return 0;
   }
 };
@@ -142,7 +184,7 @@ public:
 
 class StmtAST : public BaseAST {
 public:
-  std::unique_ptr<BaseAST> exp;
+  std::shared_ptr<BaseAST> exp;
 
   void Dump() const override {
     std::cout << "StmtAST { ";
@@ -150,23 +192,25 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    int ret = exp->GenIR(ir, gic);
-
-    if (exp->ident_ctr == -1) 
-      *ir = "ret " + *ir + "\n";
-    else {
-      *ir += ("ret %" + std::to_string(exp->ident_ctr) + "\n");
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    if (exp->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error: exp in StmtAST" << std::endl;
+      exit(-1);
     }
 
-    return ret;
+    oss << "ret " << exp->name << "\n";
+
+    return 0;
   }
 };
 
 
 class ExpAST : public BaseAST {
 public:
-  std::unique_ptr<BaseAST> l_or_exp;
+  std::shared_ptr<BaseAST> l_or_exp;
 
   void Dump() const override {
     std::cout << "ExpAST { ";
@@ -174,17 +218,25 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    int ret = l_or_exp->GenIR(ir, gic);
-    ident_ctr = l_or_exp->ident_ctr;
-    return ret;
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    if (l_or_exp->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error: l_or_exp in ExpAST" << std::endl;
+      exit(-1);
+    }
+
+    name = l_or_exp->name;
+
+    return 0;
   }
 };
 
 
 class PrimaryExpAST1 : public BaseAST {
 public:
-  std::unique_ptr<BaseAST> exp;
+  std::shared_ptr<BaseAST> exp;
 
   void Dump() const override {
     std::cout << "PrimaryExpAST1 { ( ";
@@ -192,17 +244,25 @@ public:
     std::cout << " ) }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    int ret = exp->GenIR(ir, gic);
-    ident_ctr = exp->ident_ctr;
-    return ret;
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    if (exp->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error: exp in PrimaryExpAST1" << std::endl;
+      exit(-1);
+    }
+
+    name = exp->name;
+
+    return 0;
   }
 };
 
 
 class PrimaryExpAST2 : public BaseAST {
 public:
-  std::unique_ptr<BaseAST> number;
+  std::shared_ptr<BaseAST> number;
 
   void Dump() const override {
     std::cout << "PrimaryExpAST2 { ";
@@ -210,10 +270,18 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    int ret = number->GenIR(ir, gic);
-    ident_ctr = -1;
-    return ret;
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {  
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    if (number->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error: number in PrimaryExpAST2" << std::endl;
+      exit(-1);
+    }
+
+    name = number->name;
+
+    return 0;
   }
 };
 
@@ -226,8 +294,12 @@ public:
     std::cout << "NumberAST { " << int_const << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    *ir = std::to_string(int_const);
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    name = std::to_string(int_const);
+
     return 0;
   }
 };
@@ -235,7 +307,7 @@ public:
 
 class UnaryExpAST1 : public BaseAST {
 public:
-  std::unique_ptr<BaseAST> primary_exp;
+  std::shared_ptr<BaseAST> primary_exp;
 
   void Dump() const override {
     std::cout << "UnaryExpAST1 { ";
@@ -243,18 +315,26 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    int ret = primary_exp->GenIR(ir, gic);
-    ident_ctr = primary_exp->ident_ctr;
-    return ret;
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    if (primary_exp->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error: primary_exp in UnaryExpAST1" << std::endl;
+      exit(-1);
+    }
+
+    name = primary_exp->name;
+
+    return 0;
   }
 };
 
 
 class UnaryExpAST2 : public BaseAST {
 public:
-  std::unique_ptr<BaseAST> unary_op;
-  std::unique_ptr<BaseAST> unary_exp;
+  std::shared_ptr<BaseAST> unary_op;
+  std::shared_ptr<BaseAST> unary_exp;
 
   void Dump() const override {
     std::cout << "UnaryExpAST2 { ";
@@ -264,56 +344,46 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    auto ir1 = std::make_shared<std::string>();
-    int ret = unary_op->GenIR(ir1, gic);
-    if (ret < 0) {
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    int ret;
+    if ((ret = unary_op->GenIR(global_name_ctr, oss)) < 0) {
       std::cerr << "error: unary_op in UnaryExpAST2" << std::endl;
       exit(-1);
     }
 
-    auto ir2 = std::make_shared<std::string>();
-    if (unary_exp->GenIR(ir2, gic) < 0) {
+    if (unary_exp->GenIR(global_name_ctr, oss) < 0) {
       std::cerr << "error: unary_exp in UnaryExpAST2" << std::endl;
       exit(-1);
     }
 
-    if (unary_exp->ident_ctr != -1)
-      *ir = *ir2;
-    
-    *ir += ("%" + std::to_string(*gic) + " = ");
-
     switch (ret) {
-      case 1:
-        *ir += "add 0, ";
-        break;
+      case 1:   // positive
+        name = unary_exp->name;
+        return 0;
 
-      case 2:
-        *ir += "sub 0, ";
-        break;
+      case 2:   // negative
+        name = '%' + std::to_string(*global_name_ctr);
+        *global_name_ctr += 1;
 
-      case 3:
-        *ir += "eq 0, ";
-        break;
+        oss << name << " = sub 0, " << unary_exp->name << "\n";
+
+        return 0;
+
+      case 3:   // not
+        name = '%' + std::to_string(*global_name_ctr);
+        *global_name_ctr += 1;
+
+        oss << name << " = eq 0, " << unary_exp->name << "\n";
+
+        return 0;
 
       default:
         std::cerr << "error: undefined unary operator in UnaryExpAST2" << std::endl;
         exit(-1);
     }
-
-    if (unary_exp->ident_ctr == -1) {
-      *ir += *ir2;
-      *ir += "\n";
-    } else {
-      *ir += ("%" + std::to_string(unary_exp->ident_ctr) + "\n");
-    }
-    
-    ident_ctr = *gic;
-    *gic += 1;
-
-    // std::cout << *ir << std::endl;
-
-    return 0;
   }
 };
 
@@ -332,28 +402,18 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    switch (op) {
-      case positive_op:
-        return 1;
-        break;
-      case negative_op:
-        return 2;
-        break;
-      case not_op:
-        return 3;
-        break;
-      default:
-        std::cerr << "error: undefined unary operator" << std::endl;
-        exit(-1);
-    }
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    return op;
   }
 };
 
 
 class MulExpAST1 : public BaseAST {
 public:
-  std::unique_ptr<BaseAST> unary_exp;
+  std::shared_ptr<BaseAST> unary_exp;
 
   void Dump() const override {
     std::cout << "MulExpAST1 { ";
@@ -361,19 +421,27 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    int ret = unary_exp->GenIR(ir, gic);
-    ident_ctr = unary_exp->ident_ctr;
-    return ret;
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    if (unary_exp->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error" << std::endl;
+      exit(-1);
+    }
+
+    name = unary_exp->name;
+
+    return 0;
   }
 };
 
 
 class MulExpAST2 : public BaseAST {
 public:
-  std::unique_ptr<BaseAST> mul_exp;
-  std::unique_ptr<BaseAST> bin_pri_op;
-  std::unique_ptr<BaseAST> unary_exp;
+  std::shared_ptr<BaseAST> mul_exp;
+  std::shared_ptr<BaseAST> bin_pri_op;
+  std::shared_ptr<BaseAST> unary_exp;
 
   void Dump() const override {
     std::cout << "MulExpAST2 { ";
@@ -385,76 +453,53 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    auto ir1 = std::make_shared<std::string>();
-    if (mul_exp->GenIR(ir1, gic) < 0) {
-      std::cerr << "error" << std::endl;
-      exit(-1);
-    }
-    int ident_ctr1 = mul_exp->ident_ctr;
-
-    auto ir2 = std::make_shared<std::string>();
-    int ret = bin_pri_op->GenIR(ir2, gic);
-    if (ret < 0) {
-      std::cerr << "error" << std::endl;
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    if (mul_exp->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error: mul_exp in MulExpAST2" << std::endl;
       exit(-1);
     }
 
-    auto ir3 = std::make_shared<std::string>();
-    if (unary_exp->GenIR(ir3, gic) < 0) {
-      std::cerr << "error" << std::endl;
+    int ret;
+    if ((ret = bin_pri_op->GenIR(global_name_ctr, oss)) < 0) {
+      std::cerr << "error: unary_op in MulExpAST2" << std::endl;
       exit(-1);
     }
-    int ident_ctr3 = unary_exp->ident_ctr;
 
-    *ir = "";
-    if (ident_ctr1 != -1)
-      *ir += *ir1;
-    if (ident_ctr3 != -1)
-      *ir += *ir3;
+    if (unary_exp->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error: unary_exp in MulExpAST2" << std::endl;
+      exit(-1);
+    }
 
-    *ir += ("%" + std::to_string(*gic) + " = ");
+    name = '%' + std::to_string(*global_name_ctr);
+    *global_name_ctr += 1;
 
     switch (ret) {
-      case 1:   // Mul
-        *ir += "mul ";
-        break;
-      case 2:   // Div
-        *ir += "div ";
-        break;
-      case 3:   // Mod
-        *ir += "mod ";
-        break;
+      case 1:   // mul
+        oss << name << " = mul " << mul_exp->name << ", " << unary_exp->name << "\n";
+        return 0;
+
+      case 2:   // div
+        oss << name << " = div " << mul_exp->name << ", " << unary_exp->name << "\n";
+        return 0;
+
+      case 3:   // mod
+        oss << name << " = mod " << mul_exp->name << ", " << unary_exp->name << "\n";
+        return 0;
+
       default:
-        std::cerr << "error" << std::endl;
+        std::cerr << "error: undefined operator in MulExpAST2" << std::endl;
         exit(-1);
     }
-
-    if (mul_exp->ident_ctr == -1)
-      *ir += *ir1;
-    else
-      *ir += ("%" + std::to_string(mul_exp->ident_ctr));
-
-    *ir += ", ";
-
-    if (unary_exp->ident_ctr == -1)
-      *ir += *ir3;
-    else
-      *ir += ("%" + std::to_string(unary_exp->ident_ctr));
-
-    *ir += "\n";
-
-    ident_ctr = *gic;
-    *gic += 1;
-
-    return 0;
   }
 };
 
 
 class AddExpAST1 : public BaseAST {
 public:
-  std::unique_ptr<BaseAST> mul_exp;
+  std::shared_ptr<BaseAST> mul_exp;
 
   void Dump() const override {
     std::cout << "AddExpAST1 { ";
@@ -462,19 +507,27 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    int ret = mul_exp->GenIR(ir, gic);
-    ident_ctr = mul_exp->ident_ctr;
-    return ret;
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    if (mul_exp->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error" << std::endl;
+      exit(-1);
+    }
+
+    name = mul_exp->name;
+
+    return 0;
   }
 };
 
 
 class AddExpAST2 : public BaseAST {
 public:
-  std::unique_ptr<BaseAST> add_exp;
-  std::unique_ptr<BaseAST> bin_op;
-  std::unique_ptr<BaseAST> mul_exp;
+  std::shared_ptr<BaseAST> add_exp;
+  std::shared_ptr<BaseAST> bin_op;
+  std::shared_ptr<BaseAST> mul_exp;
 
   void Dump() const override {
     std::cout << "AddExpAST2 { ";
@@ -486,72 +539,49 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    auto ir1 = std::make_shared<std::string>();
-    if (add_exp->GenIR(ir1, gic) < 0) {
-      std::cerr << "error" << std::endl;
-      exit(-1);
-    }
-    int ident_ctr1 = add_exp->ident_ctr;
-
-    auto ir2 = std::make_shared<std::string>();
-    int ret = bin_op->GenIR(ir2, gic);
-    if (ret < 0) {
-      std::cerr << "error" << std::endl;
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    if (add_exp->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error: add_exp in AddExpAST2" << std::endl;
       exit(-1);
     }
 
-    auto ir3 = std::make_shared<std::string>();
-    if (mul_exp->GenIR(ir3, gic) < 0) {
-      std::cerr << "error" << std::endl;
+    int ret;
+    if ((ret = bin_op->GenIR(global_name_ctr, oss)) < 0) {
+      std::cerr << "error: bin_op in AddExpAST2" << std::endl;
       exit(-1);
     }
-    int ident_ctr3 = mul_exp->ident_ctr;
 
-    *ir = "";
-    if (ident_ctr1 != -1)
-      *ir += *ir1;
-    if (ident_ctr3 != -1)
-      *ir += *ir3;
+    if (mul_exp->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error: mul_exp in AddExpAST2" << std::endl;
+      exit(-1);
+    }
 
-    *ir += ("%" + std::to_string(*gic) + " = ");
+    name = '%' + std::to_string(*global_name_ctr);
+    *global_name_ctr += 1;
 
     switch (ret) {
       case 1:   // add
-        *ir += "add ";
-        break;
+        oss << name << " = add " << add_exp->name << ", " << mul_exp->name << "\n";
+        return 0;
+
       case 2:   // sub
-        *ir += "sub ";
-        break;
+        oss << name << " = sub " << add_exp->name << ", " << mul_exp->name << "\n";
+        return 0;
+
       default:
-        std::cerr << "error" << std::endl;
+        std::cerr << "error: undefined operator in AddExpAST2" << std::endl;
         exit(-1);
     }
-
-    if (add_exp->ident_ctr == -1)
-      *ir += *ir1;
-    else
-      *ir += ("%" + std::to_string(add_exp->ident_ctr));
-
-    *ir += ", ";
-
-    if (mul_exp->ident_ctr == -1)
-      *ir += *ir3;
-    else
-      *ir += ("%" + std::to_string(mul_exp->ident_ctr));
-
-    *ir += "\n";
-
-    ident_ctr = *gic;
-    *gic += 1;
-
-    return 0;
   }
 };
 
+
 class RelExpAST1 : public BaseAST {
 public:
-  std::unique_ptr<BaseAST> add_exp;
+  std::shared_ptr<BaseAST> add_exp;
 
   void Dump() const override {
     std::cout << "RelExpAST1 { ";
@@ -559,18 +589,27 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    int ret = add_exp->GenIR(ir, gic);
-    ident_ctr = add_exp->ident_ctr;
-    return ret;
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    if (add_exp->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error in RelExpAST1" << std::endl;
+      exit(-1);
+    }
+
+    name = add_exp->name;
+
+    return 0;
   }
 };
 
+
 class RelExpAST2 : public BaseAST {
 public:
-  std::unique_ptr<BaseAST> rel_exp;
-  std::unique_ptr<BaseAST> rel_op;
-  std::unique_ptr<BaseAST> add_exp;
+  std::shared_ptr<BaseAST> rel_exp;
+  std::shared_ptr<BaseAST> rel_op;
+  std::shared_ptr<BaseAST> add_exp;
 
   void Dump() const override {
     std::cout << "RelExpAST2 { ";
@@ -582,79 +621,57 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    auto ir1 = std::make_shared<std::string>();
-    if (rel_exp->GenIR(ir1, gic) < 0) {
-      std::cerr << "error" << std::endl;
-      exit(-1);
-    }
-    int ident_ctr1 = rel_exp->ident_ctr;
-
-    auto ir2 = std::make_shared<std::string>();
-    int ret = rel_op->GenIR(ir2, gic);
-    if (ret < 0) {
-      std::cerr << "error" << std::endl;
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    if (rel_exp->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error: rel_exp in RelExpAST2" << std::endl;
       exit(-1);
     }
 
-    auto ir3 = std::make_shared<std::string>();
-    if (add_exp->GenIR(ir3, gic) < 0) {
-      std::cerr << "error" << std::endl;
+    int ret;
+    if ((ret = rel_op->GenIR(global_name_ctr, oss)) < 0) {
+      std::cerr << "error: rel_op in RelExpAST2" << std::endl;
       exit(-1);
     }
-    int ident_ctr3 = add_exp->ident_ctr;
 
-    *ir = "";
-    if (ident_ctr1 != -1)
-      *ir += *ir1;
-    if (ident_ctr3 != -1)
-      *ir += *ir3;
+    if (add_exp->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error: add_exp in RelExpAST2" << std::endl;
+      exit(-1);
+    }
 
-    *ir += ("%" + std::to_string(*gic) + " = ");
+    name = '%' + std::to_string(*global_name_ctr);
+    *global_name_ctr += 1;
 
     switch (ret) {
-      case 1:   // <
-        *ir += "lt ";
-        break;
-      case 2:   // >
-        *ir += "gt ";
-        break;
-      case 3:   // <=
-        *ir += "le ";
-        break;
-      case 4:   // >=
-        *ir += "ge ";
-        break;
+      case 1:   // less
+        oss << name << " = lt " << rel_exp->name << ", " << add_exp->name << "\n";
+        return 0;
+
+      case 2:   // greater
+        oss << name << " = gt " << rel_exp->name << ", " << add_exp->name << "\n";
+        return 0;
+
+      case 3:   // less_equal
+        oss << name << " = le " << rel_exp->name << ", " << add_exp->name << "\n";
+        return 0;
+      
+      case 4:   // greater_equal
+        oss << name << " = ge " << rel_exp->name << ", " << add_exp->name << "\n";
+        return 0;
+
       default:
-        std::cerr << "error" << std::endl;
+        std::cerr << "error: undefined operator in RelExpAST2" << std::endl;
         exit(-1);
     }
-
-    if (rel_exp->ident_ctr == -1)
-      *ir += *ir1;
-    else
-      *ir += ("%" + std::to_string(rel_exp->ident_ctr));
-
-    *ir += ", ";
-
-    if (add_exp->ident_ctr == -1)
-      *ir += *ir3;
-    else
-      *ir += ("%" + std::to_string(add_exp->ident_ctr));
-
-    *ir += "\n";
-
-    ident_ctr = *gic;
-    *gic += 1;
-
-    return 0;
   }
 };
 
 
 class EqExpAST1 : public BaseAST {
 public:
-  std::unique_ptr<BaseAST> rel_exp;
+  std::shared_ptr<BaseAST> rel_exp;
 
   void Dump() const override {
     std::cout << "EqExpAST1 { ";
@@ -662,19 +679,27 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    int ret = rel_exp->GenIR(ir, gic);
-    ident_ctr = rel_exp->ident_ctr;
-    return ret;
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    if (rel_exp->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error in EqExpAST1" << std::endl;
+      exit(-1);
+    }
+
+    name = rel_exp->name;
+
+    return 0;
   }
 };
 
 
 class EqExpAST2 : public BaseAST {
 public:
-  std::unique_ptr<BaseAST> eq_exp;
-  std::unique_ptr<BaseAST> eq_op;
-  std::unique_ptr<BaseAST> rel_exp;
+  std::shared_ptr<BaseAST> eq_exp;
+  std::shared_ptr<BaseAST> eq_op;
+  std::shared_ptr<BaseAST> rel_exp;
 
   void Dump() const override {
     std::cout << "EqExpAST2 { ";
@@ -686,73 +711,49 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    auto ir1 = std::make_shared<std::string>();
-    if (eq_exp->GenIR(ir1, gic) < 0) {
-      std::cerr << "error" << std::endl;
-      exit(-1);
-    }
-    int ident_ctr1 = eq_exp->ident_ctr;
-
-    auto ir2 = std::make_shared<std::string>();
-    int ret = eq_op->GenIR(ir2, gic);
-    if (ret < 0) {
-      std::cerr << "error" << std::endl;
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    if (eq_exp->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error: eq_exp in EqExpAST2" << std::endl;
       exit(-1);
     }
 
-    auto ir3 = std::make_shared<std::string>();
-    if (rel_exp->GenIR(ir3, gic) < 0) {
-      std::cerr << "error" << std::endl;
+    int ret;
+    if ((ret = eq_op->GenIR(global_name_ctr, oss)) < 0) {
+      std::cerr << "error: eq_op in EqExpAST2" << std::endl;
       exit(-1);
     }
-    int ident_ctr3 = rel_exp->ident_ctr;
 
-    *ir = "";
-    if (ident_ctr1 != -1)
-      *ir += *ir1;
-    if (ident_ctr3 != -1)
-      *ir += *ir3;
+    if (rel_exp->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error: rel_exp in EqExpAST2" << std::endl;
+      exit(-1);
+    }
 
-    *ir += ("%" + std::to_string(*gic) + " = ");
+    name = '%' + std::to_string(*global_name_ctr);
+    *global_name_ctr += 1;
 
     switch (ret) {
-      case 1:   // ==
-        *ir += "eq ";
-        break;
-      case 2:   // !=
-        *ir += "ne ";
-        break;
+      case 1:   // equal
+        oss << name << " = eq " << eq_exp->name << ", " << rel_exp->name << "\n";
+        return 0;
+
+      case 2:   // not_equal
+        oss << name << " = ne " << eq_exp->name << ", " << rel_exp->name << "\n";
+        return 0;
+
       default:
-        std::cerr << "error" << std::endl;
+        std::cerr << "error: undefined operator in EqExpAST2" << std::endl;
         exit(-1);
     }
-
-    if (eq_exp->ident_ctr == -1)
-      *ir += *ir1;
-    else
-      *ir += ("%" + std::to_string(eq_exp->ident_ctr));
-
-    *ir += ", ";
-
-    if (rel_exp->ident_ctr == -1)
-      *ir += *ir3;
-    else
-      *ir += ("%" + std::to_string(rel_exp->ident_ctr));
-
-    *ir += "\n";
-
-    ident_ctr = *gic;
-    *gic += 1;
-
-    return 0;
   }
 };
 
 
 class LAndExpAST1 : public BaseAST {
 public:
-  std::unique_ptr<BaseAST> eq_exp;
+  std::shared_ptr<BaseAST> eq_exp;
 
   void Dump() const override {
     std::cout << "LAndExpAST1 { ";
@@ -760,18 +761,26 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    int ret = eq_exp->GenIR(ir, gic);
-    ident_ctr = eq_exp->ident_ctr;
-    return ret;
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    if (eq_exp->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error in LAndExpAST1" << std::endl;
+      exit(-1);
+    }
+
+    name = eq_exp->name;
+
+    return 0;
   }
 };
 
 
 class LAndExpAST2 : public BaseAST {
 public:
-  std::unique_ptr<BaseAST> l_and_exp;
-  std::unique_ptr<BaseAST> eq_exp;
+  std::shared_ptr<BaseAST> l_and_exp;
+  std::shared_ptr<BaseAST> eq_exp;
 
   void Dump() const override {
     std::cout << "LAndExpAST2 { ";
@@ -781,45 +790,24 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    auto ir1 = std::make_shared<std::string>();
-    if (l_and_exp->GenIR(ir1, gic) < 0) {
-      std::cerr << "error" << std::endl;
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    if (l_and_exp->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error: l_and_exp in LAndExpAST2" << std::endl;
       exit(-1);
     }
-    int ident_ctr1 = l_and_exp->ident_ctr;
 
-    auto ir2 = std::make_shared<std::string>();
-    if (eq_exp->GenIR(ir2, gic) < 0) {
-      std::cerr << "error" << std::endl;
+    if (eq_exp->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error: eq_exp in LAndExpAST2" << std::endl;
       exit(-1);
     }
-    int ident_ctr2 = eq_exp->ident_ctr;
 
-    *ir = "";
-    if (ident_ctr1 != -1)
-      *ir += *ir1;
-    if (ident_ctr2 != -1)
-      *ir += *ir2;
+    name = '%' + std::to_string(*global_name_ctr);
+    *global_name_ctr += 1;
 
-    *ir += ("%" + std::to_string(*gic) + " = and ");
-
-    if (l_and_exp->ident_ctr == -1)
-      *ir += *ir1;
-    else
-      *ir += ("%" + std::to_string(l_and_exp->ident_ctr));
-
-    *ir += ", ";
-
-    if (eq_exp->ident_ctr == -1)
-      *ir += *ir2;
-    else
-      *ir += ("%" + std::to_string(eq_exp->ident_ctr));
-
-    *ir += "\n";
-
-    ident_ctr = *gic;
-    *gic += 1;
+    oss << name << " = and " << l_and_exp->name << ", " << eq_exp->name << "\n";
 
     return 0;
   }
@@ -828,7 +816,7 @@ public:
 
 class LOrExpAST1 : public BaseAST {
 public:
-  std::unique_ptr<BaseAST> l_and_exp;
+  std::shared_ptr<BaseAST> l_and_exp;
 
   void Dump() const override {
     std::cout << "LOrExpAST1 { ";
@@ -836,18 +824,26 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    int ret = l_and_exp->GenIR(ir, gic);
-    ident_ctr = l_and_exp->ident_ctr;
-    return ret;
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    if (l_and_exp->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error in LOrExpAST1" << std::endl;
+      exit(-1);
+    }
+
+    name = l_and_exp->name;
+
+    return 0;
   }
 };
 
 
 class LOrExpAST2 : public BaseAST {
 public:
-  std::unique_ptr<BaseAST> l_or_exp;
-  std::unique_ptr<BaseAST> l_and_exp;
+  std::shared_ptr<BaseAST> l_or_exp;
+  std::shared_ptr<BaseAST> l_and_exp;
 
   void Dump() const override {
     std::cout << "LOrExpAST2 { ";
@@ -857,45 +853,24 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    auto ir1 = std::make_shared<std::string>();
-    if (l_or_exp->GenIR(ir1, gic) < 0) {
-      std::cerr << "error" << std::endl;
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    if (l_or_exp->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error: l_or_exp in LOrExpAST2" << std::endl;
       exit(-1);
     }
-    int ident_ctr1 = l_or_exp->ident_ctr;
 
-    auto ir2 = std::make_shared<std::string>();
-    if (l_and_exp->GenIR(ir2, gic) < 0) {
-      std::cerr << "error" << std::endl;
+    if (l_and_exp->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error: l_and_exp in LOrExpAST2" << std::endl;
       exit(-1);
     }
-    int ident_ctr2 = l_and_exp->ident_ctr;
 
-    *ir = "";
-    if (ident_ctr1 != -1)
-      *ir += *ir1;
-    if (ident_ctr2 != -1)
-      *ir += *ir2;
+    name = '%' + std::to_string(*global_name_ctr);
+    *global_name_ctr += 1;
 
-    *ir += ("%" + std::to_string(*gic) + " = or ");
-
-    if (l_or_exp->ident_ctr == -1)
-      *ir += *ir1;
-    else
-      *ir += ("%" + std::to_string(l_or_exp->ident_ctr));
-
-    *ir += ", ";
-
-    if (l_and_exp->ident_ctr == -1)
-      *ir += *ir2;
-    else
-      *ir += ("%" + std::to_string(l_and_exp->ident_ctr));
-
-    *ir += "\n";
-
-    ident_ctr = *gic;
-    *gic += 1;
+    oss << name << " = or " << l_or_exp->name << ", " << l_and_exp->name << "\n";
 
     return 0;
   }
@@ -922,21 +897,11 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    switch (op) {
-      case mul_op:
-        return 1;
-        break;
-      case div_op:
-        return 2;
-        break;
-      case mod_op:
-        return 3;
-        break;
-      default:
-        std::cerr << "error: undefined binary priority operator" << std::endl;
-        exit(-1);
-    }
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    return op;
   }
 };
 
@@ -958,18 +923,11 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    switch (op) {
-      case add_op:
-        return 1;
-        break;
-      case sub_op:
-        return 2;
-        break;
-      default:
-        std::cerr << "error: undefined binary operator" << std::endl;
-        exit(-1);
-    }
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    return op;
   }
 };
 
@@ -997,24 +955,11 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    switch (op) {
-      case less_op:
-        return 1;
-        break;
-      case greater_op:
-        return 2;
-        break;
-      case less_equal_op:
-        return 3;
-        break;
-      case greater_equal_op:
-        return 4;
-        break;
-      default:
-        std::cerr << "error: undefined relational operator" << std::endl;
-        exit(-1);
-    }
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    return op;
   }
 };
 
@@ -1036,18 +981,10 @@ public:
     std::cout << " }";
   }
 
-  int GenIR(std::shared_ptr<std::string> ir, int *gic) override {
-    switch (op) {
-      case equal_op:
-        return 1;
-        break;
-      case not_equal_op:
-        return 2;
-        break;
-      default:
-        std::cerr << "error: undefined equality operator" << std::endl;
-        exit(-1);
-    }
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    return op;
   }
 };
-
