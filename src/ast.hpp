@@ -804,13 +804,16 @@ public:
       exit(-1);
     }
 
-    auto name1 = '%' + std::to_string(*global_name_ctr);
-    name = '%' + std::to_string(*global_name_ctr + 1);
-    *global_name_ctr += 2;
+    // a && b <==> !!a && !!b
+    oss << '%' << *global_name_ctr << " = eq 0, " << l_and_exp->name << "\n";
+    oss << '%' << *global_name_ctr+1 << " = eq 0, " << *global_name_ctr << "\n";
+    oss << '%' << *global_name_ctr+2 << " = eq 0, " << eq_exp->name << "\n";
+    oss << '%' << *global_name_ctr+3 << " = eq 0, " << *global_name_ctr+2 << "\n";
+    oss << '%' << *global_name_ctr+4 << " = and " << '%' << *global_name_ctr+1 
+    << ", " << *global_name_ctr+3 << "\n";
 
-    // a && b <==> (a & b) != 0
-    oss << name1 << " = and " << l_and_exp->name << ", " << eq_exp->name << "\n";
-    oss << name << " = eq 0, " << name1 << "\n";
+    name = '%' + std::to_string(*global_name_ctr + 4);
+    *global_name_ctr += 5;
 
     return 0;
   }
