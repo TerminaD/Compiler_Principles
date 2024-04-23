@@ -25,7 +25,6 @@ LOrExp      ::= LAndExp | LOrExp "||" LAndExp;
 
 #pragma once
 
-#include <cstddef>
 #include <memory>
 #include <string>
 #include <iostream>
@@ -361,25 +360,27 @@ public:
     }
 
     // If operand can be calculated at compile-time
-    if (unary_exp->name[0] != '%') {
-      switch (ret) {
-        case 1:
-          name = unary_exp->name;
-          return 0;
+    #ifndef NOFOLD
+      if (unary_exp->name[0] != '%') {
+        switch (ret) {
+          case 1:
+            name = unary_exp->name;
+            return 0;
 
-        case 2:
-          name = std::to_string(-std::stoi(unary_exp->name));
-          return 0;
+          case 2:
+            name = std::to_string(-std::stoi(unary_exp->name));
+            return 0;
 
-        case 3:
-          name = std::to_string(!std::stoi(unary_exp->name));
-          return 0;
+          case 3:
+            name = std::to_string(!std::stoi(unary_exp->name));
+            return 0;
 
-        default:
-          std::cerr << "error: undefined unary operator in UnaryExpAST2" << std::endl;
-          exit(-1);
+          default:
+            std::cerr << "error: undefined unary operator in UnaryExpAST2" << std::endl;
+            exit(-1);
+        }
       }
-    }
+    #endif
 
     switch (ret) {
       case 1:   // positive
@@ -495,28 +496,30 @@ public:
       exit(-1);
     }
 
-    if (mul_exp->name[0] != '%' && unary_exp->name[0] != '%') {
-      int val1 = std::stoi(mul_exp->name);
-      int val2 = std::stoi(unary_exp->name);
+    #ifndef NOFOLD
+      if (mul_exp->name[0] != '%' && unary_exp->name[0] != '%') {
+        int val1 = std::stoi(mul_exp->name);
+        int val2 = std::stoi(unary_exp->name);
 
-      switch (ret) {
-        case 1:
-          name = std::to_string(val1 * val2);
-          return 0;
+        switch (ret) {
+          case 1:
+            name = std::to_string(val1 * val2);
+            return 0;
 
-        case 2:
-          name = std::to_string(val1 / val2);
-          return 0;
+          case 2:
+            name = std::to_string(val1 / val2);
+            return 0;
 
-        case 3:
-          name = std::to_string(val1 % val2);
-          return 0;
+          case 3:
+            name = std::to_string(val1 % val2);
+            return 0;
 
-        default:
-          std::cerr << "error: undefined operator in MulExpAST2" << std::endl;
-          exit(-1);
+          default:
+            std::cerr << "error: undefined operator in MulExpAST2" << std::endl;
+            exit(-1);
+        }
       }
-    }
+    #endif
 
     name = '%' + std::to_string(*global_name_ctr);
     *global_name_ctr += 1;
@@ -604,24 +607,26 @@ public:
       exit(-1);
     }
 
-    if (add_exp->name[0] != '%' && mul_exp->name[0] != '%') {
-      int val1 = std::stoi(add_exp->name);
-      int val2 = std::stoi(mul_exp->name);
+    #ifndef NOFOLD
+      if (add_exp->name[0] != '%' && mul_exp->name[0] != '%') {
+        int val1 = std::stoi(add_exp->name);
+        int val2 = std::stoi(mul_exp->name);
 
-      switch (ret) {
-        case 1:
-          name = std::to_string(val1 + val2);
-          return 0;
+        switch (ret) {
+          case 1:
+            name = std::to_string(val1 + val2);
+            return 0;
 
-        case 2:
-          name = std::to_string(val1 - val2);
-          return 0;
+          case 2:
+            name = std::to_string(val1 - val2);
+            return 0;
 
-        default:
-          std::cerr << "error: undefined operator in AddExpAST2" << std::endl;
-          exit(-1);
+          default:
+            std::cerr << "error: undefined operator in AddExpAST2" << std::endl;
+            exit(-1);
+        }
       }
-    }
+    #endif
 
     name = '%' + std::to_string(*global_name_ctr);
     *global_name_ctr += 1;
@@ -705,32 +710,34 @@ public:
       exit(-1);
     }
 
-    if (rel_exp->name[0] != '%' && add_exp->name[0] != '%') {
-      int val1 = std::stoi(rel_exp->name);
-      int val2 = std::stoi(add_exp->name);
+    #ifndef NOFOLD
+      if (rel_exp->name[0] != '%' && add_exp->name[0] != '%') {
+        int val1 = std::stoi(rel_exp->name);
+        int val2 = std::stoi(add_exp->name);
 
-      switch (ret) {
-        case 1:
-          name = std::to_string(val1 < val2);
-          return 0;
+        switch (ret) {
+          case 1:
+            name = std::to_string(val1 < val2);
+            return 0;
 
-        case 2:
-          name = std::to_string(val1 > val2);
-          return 0;
+          case 2:
+            name = std::to_string(val1 > val2);
+            return 0;
 
-        case 3:
-          name = std::to_string(val1 <= val2);
-          return 0;
+          case 3:
+            name = std::to_string(val1 <= val2);
+            return 0;
 
-        case 4:
-          name = std::to_string(val1 >= val2);
-          return 0;
+          case 4:
+            name = std::to_string(val1 >= val2);
+            return 0;
 
-        default:
-          std::cerr << "error: undefined operator in RelExpAST2" << std::endl;
-          exit(-1);
+          default:
+            std::cerr << "error: undefined operator in RelExpAST2" << std::endl;
+            exit(-1);
+        }
       }
-    }
+    #endif
 
     name = '%' + std::to_string(*global_name_ctr);
     *global_name_ctr += 1;
@@ -822,24 +829,26 @@ public:
       exit(-1);
     }
 
-    if (eq_exp->name[0] != '%' && rel_exp->name[0] != '%') {
-      int val1 = std::stoi(eq_exp->name);
-      int val2 = std::stoi(rel_exp->name);
+    #ifndef NOFOLD
+      if (eq_exp->name[0] != '%' && rel_exp->name[0] != '%') {
+        int val1 = std::stoi(eq_exp->name);
+        int val2 = std::stoi(rel_exp->name);
 
-      switch (ret) {
-        case 1:
-          name = std::to_string(val1 == val2);
-          return 0;
+        switch (ret) {
+          case 1:
+            name = std::to_string(val1 == val2);
+            return 0;
 
-        case 2:
-          name = std::to_string(val1 != val2);
-          return 0;
+          case 2:
+            name = std::to_string(val1 != val2);
+            return 0;
 
-        default:
-          std::cerr << "error: undefined operator in EqExpAST2" << std::endl;
-          exit(-1);
+          default:
+            std::cerr << "error: undefined operator in EqExpAST2" << std::endl;
+            exit(-1);
+        }
       }
-    }
+    #endif
 
     name = '%' + std::to_string(*global_name_ctr);
     *global_name_ctr += 1;
@@ -914,22 +923,24 @@ public:
       exit(-1);
     }
 
-    if (l_and_exp->name[0] != '%' && eq_exp->name[0] != '%') {
-      int val1 = std::stoi(l_and_exp->name);
-      int val2 = std::stoi(eq_exp->name);
+    #ifndef NOFOLD
+      if (l_and_exp->name[0] != '%' && eq_exp->name[0] != '%') {
+        int val1 = std::stoi(l_and_exp->name);
+        int val2 = std::stoi(eq_exp->name);
 
-      name = std::to_string(val1 && val2);
+        name = std::to_string(val1 && val2);
 
-      return 0;
-    }
+        return 0;
+      }
+    #endif
 
     // a && b <==> !!a && !!b
     oss << '%' << *global_name_ctr << " = eq 0, " << l_and_exp->name << "\n";
-    oss << '%' << *global_name_ctr+1 << " = eq 0, " << *global_name_ctr << "\n";
+    oss << '%' << *global_name_ctr+1 << " = eq 0, " << '%' << *global_name_ctr << "\n";
     oss << '%' << *global_name_ctr+2 << " = eq 0, " << eq_exp->name << "\n";
-    oss << '%' << *global_name_ctr+3 << " = eq 0, " << *global_name_ctr+2 << "\n";
+    oss << '%' << *global_name_ctr+3 << " = eq 0, " << '%' << *global_name_ctr+2 << "\n";
     oss << '%' << *global_name_ctr+4 << " = and " << '%' << *global_name_ctr+1 
-    << ", " << *global_name_ctr+3 << "\n";
+    << ", " << '%' << *global_name_ctr+3 << "\n";
 
     name = '%' + std::to_string(*global_name_ctr + 4);
     *global_name_ctr += 5;
@@ -992,14 +1003,16 @@ public:
       exit(-1);
     }
 
-    if (l_or_exp->name[0] != '%' && l_and_exp->name[0] != '%') {
-      int val1 = std::stoi(l_or_exp->name);
-      int val2 = std::stoi(l_and_exp->name);
+    #ifndef NOFOLD
+      if (l_or_exp->name[0] != '%' && l_and_exp->name[0] != '%') {
+        int val1 = std::stoi(l_or_exp->name);
+        int val2 = std::stoi(l_and_exp->name);
 
-      name = std::to_string(val1 || val2);
-      
-      return 0;
-    }
+        name = std::to_string(val1 || val2);
+        
+        return 0;
+      }
+    #endif
 
     auto name1 = '%' + std::to_string(*global_name_ctr);
     name = '%' + std::to_string(*global_name_ctr + 1);

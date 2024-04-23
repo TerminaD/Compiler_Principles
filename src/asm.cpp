@@ -152,6 +152,11 @@ void Visit(const koopa_raw_value_t &value, std::ofstream &out) {
       Visit(kind.data.integer, out);
       break;
 
+    case KOOPA_RVT_BINARY:
+      // Binary op, type: koopa_raw_binary_t
+      Visit(kind.data.binary, out);
+      break;
+
     default:
       // 其他类型暂时遇不到
       assert(false);
@@ -180,4 +185,9 @@ void Visit(const koopa_raw_integer_t &integer, std::ofstream &out) {
   #endif
 
   out << "  li a0, " << int_val << std::endl;
+}
+
+// Binary instruction
+void Visit(const koopa_raw_binary_t &bin, std::ofstream &out) {
+  
 }

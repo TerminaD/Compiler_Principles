@@ -27,6 +27,13 @@ CFLAGS += -g -O0 -DPRINT
 CXXFLAGS += -g -O0 -DPRINT
 endif
 
+# No-fold flag
+NOFOLD ?= 1
+ifeq ($(NOFOLD), 1)
+CFLAGS += -DNOFOLD
+CXXFLAGS += -DNOFOLD
+endif
+
 # Compilers
 CC := clang
 CXX := clang++
