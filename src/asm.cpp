@@ -60,16 +60,17 @@ void Visit(const koopa_raw_program_t &program,
   out << "  .globl";
 
   // 访问所有全局变量，暂时不用
-  Visit(program.values, out, global_reg_ctr);
+  Visit(program.values, out, global_reg_ctr, false);
 
   // 访问所有函数
-  Visit(program.funcs, out, global_reg_ctr);
+  Visit(program.funcs, out, global_reg_ctr, false);
 }
 
 // 访问 raw slice
 void Visit(const koopa_raw_slice_t &slice, 
            std::ofstream &out, 
-           int *global_reg_ctr) {
+           int *global_reg_ctr,
+           bool ret_only) {
   #ifdef PRINT
     const char *kind_str;
     switch (slice.kind) {
@@ -93,7 +94,7 @@ void Visit(const koopa_raw_slice_t &slice,
 
   //! If slice is a list of instructions, only visit the last one (return instruction)
   //! Must be removed once .data segment is populated!
-  if (slice.kind == KOOPA_RSIK_VALUE && slice.len != 0) {
+  if (ret_only) {
     Visit(reinterpret_cast<koopa_raw_value_t>(slice.buffer[slice.len-1]), out, global_reg_ctr, reg_ctr1);
     return;
   }
@@ -144,7 +145,7 @@ void Visit(const koopa_raw_function_t &func,
   out << func_name << ':' << std::endl;
   
   // 访问所有基本块, function contents
-  Visit(func->bbs, out, global_reg_ctr);
+  Visit(func->bbs, out, global_reg_ctr, false);
 }
 
 // 访问基本块
@@ -159,7 +160,7 @@ void Visit(const koopa_raw_basic_block_t &bb,
   #endif  
 
   // 访问所有指令
-  Visit(bb->insts, out, global_reg_ctr);
+  Visit(bb->insts, out, global_reg_ctr, true);
 }
 
 // 访问指令

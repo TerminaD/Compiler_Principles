@@ -15,7 +15,8 @@ void Visit(const koopa_raw_program_t &program,
 // Visit a slice
 void Visit(const koopa_raw_slice_t &slice, 
            std::ofstream &out, 
-           int *global_reg_ctr);
+           int *global_reg_ctr,
+           bool ret_only);
 
 // Visit a function
 void Visit(const koopa_raw_function_t &func, 
