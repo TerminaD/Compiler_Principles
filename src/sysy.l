@@ -49,6 +49,8 @@ Hexadecimal   0[xX][0-9a-fA-F]+
 "&&"            { return ANDOP; }
 "||"            { return OROP; }
 
+"const"			{ return CONST; }
+
 .               { return yytext[0]; }
 
 \/\*         	{ BEGIN(COMMENTS); }

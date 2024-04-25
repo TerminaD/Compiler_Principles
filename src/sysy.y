@@ -37,12 +37,12 @@ using namespace std;
 
 // lexer 返回的所有 token 种类的声明
 // 注意 IDENT 和 INT_CONST 会返回 token 的值, 分别对应 str_val 和 int_val
-%token INT RETURN LESSEQUAL GREATEREQUAL EQUAL NOTEQUAL ANDOP OROP
+%token INT RETURN LESSEQUAL GREATEREQUAL EQUAL NOTEQUAL ANDOP OROP CONST
 %token <str_val> IDENT
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
-%type <ast_val> FuncDef FuncType Block Stmt Number Exp PrimaryExp UnaryExp UnaryOp AddExp MulExp BinPriOp BinOp LOrExp RelExp EqExp LAndExp RelOp EqOp
+%type <ast_val> FuncDef FuncType Block Stmt Number Exp PrimaryExp UnaryExp UnaryOp AddExp MulExp BinPriOp BinOp LOrExp RelExp EqExp LAndExp RelOp EqOp Decl ConstDecl BType ConstDef ConstDefList ConstInitVal BlockItemList BlockItem LVal ConstExp
 
 %%
 
@@ -53,6 +53,7 @@ using namespace std;
 // $1 指代规则里第一个符号的返回值, 也就是 FuncDef 的返回值
 CompUnit
   : FuncDef {
+    std::cout << "CompUnit" << std::endl;
     auto comp_unit = make_unique<CompUnitAST>();
     comp_unit->func_def = unique_ptr<BaseAST>($1);
     ast = move(comp_unit);
@@ -69,8 +70,75 @@ CompUnit
 // 否则会发生内存泄漏, 而 unique_ptr 这种智能指针可以自动帮我们 delete
 // 虽然此处你看不出用 unique_ptr 和手动 delete 的区别, 但当我们定义了 AST 之后
 // 这种写法会省下很多内存管理的负担
+Decl
+  : ConstDecl {
+    std::cout << "Decl" << std::endl;
+    auto ast = new DeclAST();
+    ast->const_decl = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  ;
+
+ConstDecl
+  : CONST BType ConstDef ConstDefList ';' {
+    std::cout << "ConstDecl" << std::endl;
+    auto ast = new ConstDeclAST();
+    ast->b_type = unique_ptr<BaseAST>($2);
+    ast->const_def_list = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  ;
+
+BType
+  : INT {
+    std::cout << "BType" << std::endl;
+    auto ast = new BTypeAST();
+    ast->type = "int";
+    $$ = ast;
+  }
+  ;
+
+ConstDefList
+  : {
+    std::cout << "ConstDefList1" << std::endl;
+    auto ast = new ConstDefListAST();
+    $$ = ast;
+  }
+  | ConstDefList ',' ConstDef {
+    std::cout << "ConstDefList2" << std::endl;
+    auto ast = new ConstDefListAST();
+    // Since unique_ptr's can't be copied, we move them
+    // Makes all ConstDefLists except the final one invalid
+    ast->const_defs = move(unique_ptr<BaseAST>($1)->const_defs); 
+    (ast->const_defs).push_back(unique_ptr<BaseAST>($3));
+    $$ = ast;
+  }
+  ;
+
+ConstDef
+  : IDENT '=' ConstInitVal {
+    std::cout << "ConstDef" << std::endl;
+    auto ast = new ConstDefAST();
+    ast->ident = *unique_ptr<string>($1);
+    ast->const_init_val = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  ;
+
+ConstInitVal
+  : ConstExp {
+    std::cout << "ConstInitVal" << std::endl;
+    auto ast = new ConstInitValAST();
+    ast->const_exp = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  ;
+
+// -----------------------------------------------------------------
+
 FuncDef
   : FuncType IDENT '(' ')' Block {
+    std::cout << "FuncDef" << std::endl;
     auto ast = new FuncDefAST();
     ast->func_type = unique_ptr<BaseAST>($1);
     ast->ident = *unique_ptr<string>($2);
@@ -81,43 +149,100 @@ FuncDef
 
 FuncType
   : INT {
+    std::cout << "FuncType" << std::endl;
     auto ast = new FuncTypeAST();
     ast->func_type = "int";
     $$ = ast;
   }
   ;
 
+// -----------------------------------------------------------------
+
 Block
-  : '{' Stmt '}' {
+  : '{' BlockItemList '}' {
+    std::cout << "Block" << std::endl;
     auto ast = new BlockAST();
-    ast->stmt = unique_ptr<BaseAST>($2);
+    ast->block_item_list = unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+  ;
+
+BlockItemList
+  : {
+    std::cout << "BlockItemList1" << std::endl;
+    auto ast = new BlockItemListAST();
+    $$ = ast;
+  }
+  | BlockItem BlockItemList {
+    std::cout << "BlockItemList2" << std::endl;
+    auto ast = new BlockItemListAST();
+    // Since unique_ptr's can't be copied, we move them
+    // Makes all BlockItemLists except the final one invalid
+    ast->block_items = move(unique_ptr<BaseAST>($2)->block_items);
+    (ast->block_items).push_back(unique_ptr<BaseAST>($1));
+    $$ = ast;
+  }
+  ;
+
+BlockItem
+  : Decl {
+    std::cout << "BlockItem1" << std::endl;
+    auto ast = new BlockItemAST1();
+    ast->decl = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | Stmt {
+    std::cout << "BlockItem2" << std::endl;
+    auto ast = new BlockItemAST2();
+    ast->stmt = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   ;
 
 Stmt
   : RETURN Exp ';' {
+    std::cout << "Stmt" << std::endl;
     auto ast = new StmtAST();
     ast->exp = unique_ptr<BaseAST>($2);
     $$ = ast;
   }
   ;
 
+// -----------------------------------------------------------------
+
 Exp
   : LOrExp {
+    std::cout << "Exp" << std::endl;
     auto ast = new ExpAST();
     ast->l_or_exp = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   ;
 
+LVal
+  : IDENT {
+    std::cout << "LVal" << std::endl;
+    auto ast = new LValAST();
+    ast->ident = *unique_ptr<string>($1);
+    $$ = ast;
+  }
+  ;
+
 PrimaryExp
   : '(' Exp ')' {
+    std::cout << "PrimaryExp1" << std::endl;
     auto ast = new PrimaryExpAST1();
     ast->exp = unique_ptr<BaseAST>($2);
     $$ = ast;
   }
+  | LVal {
+    std::cout << "PrimaryExp3" << std::endl;
+    auto ast = new PrimaryExpAST3();
+    ast->l_val = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
   | Number {
+    std::cout << "PrimaryExp2" << std::endl;
     auto ast = new PrimaryExpAST2();
     ast->number = unique_ptr<BaseAST>($1);
     $$ = ast;
@@ -126,6 +251,7 @@ PrimaryExp
 
 Number
   : INT_CONST {
+    std::cout << "Number" << std::endl;
     auto ast = new NumberAST();
     ast->int_const = $1;
     $$ = ast;
@@ -134,11 +260,13 @@ Number
 
 UnaryExp
   : PrimaryExp {
+    std::cout << "UnaryExp1" << std::endl;
     auto ast = new UnaryExpAST1();
     ast->primary_exp = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   | UnaryOp UnaryExp {
+    std::cout << "UnaryExp2" << std::endl;
     auto ast = new UnaryExpAST2();
     ast->unary_op = unique_ptr<BaseAST>($1);
     ast->unary_exp = unique_ptr<BaseAST>($2);
@@ -148,16 +276,19 @@ UnaryExp
 
 UnaryOp
   : '+' {
+    std::cout << "UnaryOp1" << std::endl;
     auto ast = new UnaryOpAST();
     ast->op = positive_op;
     $$ = ast;
   }
   | '-' {
+    std::cout << "UnaryOp2" << std::endl;
     auto ast = new UnaryOpAST();
     ast->op = negative_op;
     $$ = ast;
   }
   | '!' {
+    std::cout << "UnaryOp3" << std::endl;
     auto ast = new UnaryOpAST();
     ast->op = not_op;
     $$ = ast;
@@ -166,11 +297,13 @@ UnaryOp
 
 MulExp
   : UnaryExp {
+    std::cout << "MulExp1" << std::endl;
     auto ast = new MulExpAST1();
     ast->unary_exp = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   | MulExp BinPriOp UnaryExp {
+    std::cout << "MulExp2" << std::endl;
     auto ast = new MulExpAST2();
     ast->mul_exp = unique_ptr<BaseAST>($1);
     ast->bin_pri_op = unique_ptr<BaseAST>($2);
@@ -179,13 +312,36 @@ MulExp
   }
   ;
 
+BinPriOp
+  : '*' {
+    std::cout << "BinPriOp1" << std::endl;
+    auto ast = new BinPriOpAST();
+    ast->op = mul_op;
+    $$ = ast;
+  }
+  | '/' {
+    std::cout << "BinPriOp2" << std::endl;
+    auto ast = new BinPriOpAST();
+    ast->op = div_op;
+    $$ = ast;
+  }
+  | '%' {
+    std::cout << "BinPriOp3" << std::endl;
+    auto ast = new BinPriOpAST();
+    ast->op = mod_op;
+    $$ = ast;
+  }
+  ;
+
 AddExp
   : MulExp {
+    std::cout << "AddExp1" << std::endl;
     auto ast = new AddExpAST1();
     ast->mul_exp = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   | AddExp BinOp MulExp {
+    std::cout << "AddExp2" << std::endl;
     auto ast = new AddExpAST2();
     ast->add_exp = unique_ptr<BaseAST>($1);
     ast->bin_op = unique_ptr<BaseAST>($2);
@@ -194,13 +350,30 @@ AddExp
   }
   ;
 
+BinOp
+  : '+' {
+    std::cout << "BinOp1" << std::endl;
+    auto ast = new BinOpAST();
+    ast->op = add_op;
+    $$ = ast;
+  }
+  | '-' {
+    std::cout << "BinOp2" << std::endl;
+    auto ast = new BinOpAST();
+    ast->op = sub_op;
+    $$ = ast;
+  }
+  ;
+
 RelExp
   : AddExp {
+    std::cout << "RelExp1" << std::endl;
     auto ast = new RelExpAST1();
     ast->add_exp = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   | RelExp RelOp AddExp {
+    std::cout << "RelExp2" << std::endl;
     auto ast = new RelExpAST2();
     ast->rel_exp = unique_ptr<BaseAST>($1);
     ast->rel_op = unique_ptr<BaseAST>($2);
@@ -209,13 +382,42 @@ RelExp
   }
   ;
 
+RelOp
+  : '<' {
+    std::cout << "RelOp1" << std::endl;
+    auto ast = new RelOpAST();
+    ast->op = less_op;
+    $$ = ast;
+  }
+  | '>' {
+    std::cout << "RelOp2" << std::endl;
+    auto ast = new RelOpAST();
+    ast->op = greater_op;
+    $$ = ast;
+  }
+  | LESSEQUAL {
+    std::cout << "RelOp3" << std::endl;
+    auto ast = new RelOpAST();
+    ast->op = less_equal_op;
+    $$ = ast;
+  }
+  | GREATEREQUAL {
+    std::cout << "RelOp4" << std::endl;
+    auto ast = new RelOpAST();
+    ast->op = greater_equal_op;
+    $$ = ast;
+  }
+  ;
+
 EqExp
   : RelExp {
+    std::cout << "EqExp1" << std::endl;
     auto ast = new EqExpAST1();
     ast->rel_exp = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   | EqExp EqOp RelExp {
+    std::cout << "EqExp2" << std::endl;
     auto ast = new EqExpAST2();
     ast->eq_exp = unique_ptr<BaseAST>($1);
     ast->eq_op = unique_ptr<BaseAST>($2);
@@ -224,13 +426,30 @@ EqExp
   }
   ;
 
+EqOp
+  : EQUAL {
+    std::cout << "EqOp1" << std::endl;
+    auto ast = new EqOpAST();
+    ast->op = equal_op;
+    $$ = ast;
+  }
+  | NOTEQUAL {
+    std::cout << "EqOp2" << std::endl;
+    auto ast = new EqOpAST();
+    ast->op = not_equal_op;
+    $$ = ast;
+  }
+  ;
+
 LAndExp
   : EqExp {
+    std::cout << "LAndExp1" << std::endl;
     auto ast = new LAndExpAST1();
     ast->eq_exp = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   | LAndExp ANDOP EqExp {
+    std::cout << "LAndExp2" << std::endl;
     auto ast = new LAndExpAST2();
     ast->l_and_exp = unique_ptr<BaseAST>($1);
     ast->eq_exp = unique_ptr<BaseAST>($3);
@@ -240,11 +459,13 @@ LAndExp
 
 LOrExp
   : LAndExp {
+    std::cout << "LOrExp1" << std::endl;
     auto ast = new LOrExpAST1();
     ast->l_and_exp = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   | LOrExp OROP LAndExp {
+    std::cout << "LOrExp2" << std::endl;
     auto ast = new LOrExpAST2();
     ast->l_or_exp = unique_ptr<BaseAST>($1);
     ast->l_and_exp = unique_ptr<BaseAST>($3);
@@ -252,69 +473,11 @@ LOrExp
   }
   ;
 
-BinPriOp
-  : '*' {
-    auto ast = new BinPriOpAST();
-    ast->op = mul_op;
-    $$ = ast;
-  }
-  | '/' {
-    auto ast = new BinPriOpAST();
-    ast->op = div_op;
-    $$ = ast;
-  }
-  | '%' {
-    auto ast = new BinPriOpAST();
-    ast->op = mod_op;
-    $$ = ast;
-  }
-  ;
-
-BinOp
-  : '+' {
-    auto ast = new BinOpAST();
-    ast->op = add_op;
-    $$ = ast;
-  }
-  | '-' {
-    auto ast = new BinOpAST();
-    ast->op = sub_op;
-    $$ = ast;
-  }
-  ;
-
-RelOp
-  : '<' {
-    auto ast = new RelOpAST();
-    ast->op = less_op;
-    $$ = ast;
-  }
-  | '>' {
-    auto ast = new RelOpAST();
-    ast->op = greater_op;
-    $$ = ast;
-  }
-  | LESSEQUAL {
-    auto ast = new RelOpAST();
-    ast->op = less_equal_op;
-    $$ = ast;
-  }
-  | GREATEREQUAL {
-    auto ast = new RelOpAST();
-    ast->op = greater_equal_op;
-    $$ = ast;
-  }
-  ;
-
-EqOp
-  : EQUAL {
-    auto ast = new EqOpAST();
-    ast->op = equal_op;
-    $$ = ast;
-  }
-  | NOTEQUAL {
-    auto ast = new EqOpAST();
-    ast->op = not_equal_op;
+ConstExp
+  : Exp {
+    std::cout << "ConstExp" << std::endl;
+    auto ast = new ConstExpAST();
+    ast->exp = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   ;

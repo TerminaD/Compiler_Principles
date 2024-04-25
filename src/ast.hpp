@@ -1,25 +1,39 @@
 /*
 Generation rules:
 
-CompUnit    ::= FuncDef;
+CompUnit      ::= FuncDef;
 
-FuncDef     ::= FuncType IDENT "(" ")" Block;
-FuncType    ::= "int";
+Decl          ::= ConstDecl | VarDecl;
+ConstDecl     ::= "const" BType ConstDef {"," ConstDef} ";";
+BType         ::= "int";
+ConstDef      ::= IDENT "=" ConstInitVal;
+ConstInitVal  ::= ConstExp;
+VarDecl       ::= BType VarDef {"," VarDef} ";";
+VarDef        ::= IDENT | IDENT "=" InitVal;
+InitVal       ::= Exp;
 
-Block       ::= "{" Stmt "}";
-Stmt        ::= "return" Exp ";";
+FuncDef       ::= FuncType IDENT "(" ")" Block;
+FuncType      ::= "int";
 
-Exp         ::= LOrExp;
-PrimaryExp  ::= "(" Exp ")" | Number;
-Number      ::= INT_CONST;
-UnaryExp    ::= PrimaryExp | UnaryOp UnaryExp;
-UnaryOp     ::= "+" | "-" | "!";
-MulExp      ::= UnaryExp | MulExp ("*" | "/" | "%") UnaryExp;
-AddExp      ::= MulExp | AddExp ("+" | "-") MulExp;
-RelExp      ::= AddExp | RelExp ("<" | ">" | "<=" | ">=") AddExp;
-EqExp       ::= RelExp | EqExp ("==" | "!=") RelExp;
-LAndExp     ::= EqExp | LAndExp "&&" EqExp;
-LOrExp      ::= LAndExp | LOrExp "||" LAndExp;
+Block         ::= "{" {BlockItem} "}";
+BlockItem     ::= Decl | Stmt;
+Stmt          ::= LVal "=" Exp ";"
+                | "return" Exp ";";
+
+Exp           ::= LOrExp;
+LVal          ::= IDENT;
+PrimaryExp    ::= "(" Exp ")" | LVal | Number;
+Number        ::= INT_CONST;
+UnaryExp      ::= PrimaryExp | UnaryOp UnaryExp;
+UnaryOp       ::= "+" | "-" | "!";
+MulExp        ::= UnaryExp | MulExp ("*" | "/" | "%") UnaryExp;
+AddExp        ::= MulExp | AddExp ("+" | "-") MulExp;
+RelExp        ::= AddExp | RelExp ("<" | ">" | "<=" | ">=") AddExp;
+EqExp         ::= RelExp | EqExp ("==" | "!=") RelExp;
+LAndExp       ::= EqExp | LAndExp "&&" EqExp;
+LOrExp        ::= LAndExp | LOrExp "||" LAndExp;
+ConstExp      ::= Exp;
+
 */
 
 
@@ -30,6 +44,7 @@ LOrExp      ::= LAndExp | LOrExp "||" LAndExp;
 #include <iostream>
 #include <sstream>
 #include <typeinfo>
+#include <vector>
 
 
 enum unary_op_t {
@@ -67,17 +82,20 @@ class BaseAST {
 public:
   virtual ~BaseAST() = default;
 
+  std::string name;
+  std::vector<std::unique_ptr<BaseAST>> const_defs;
+  std::vector<std::unique_ptr<BaseAST>> block_items;
+
   virtual void Dump() const = 0;
 
   virtual int GenIR(int *global_name_ctr, std::ostringstream &oss) = 0;
-
-  std::string name;
 };
 
+// -----------------------------------------------------------------
 
 class CompUnitAST : public BaseAST {
 public:
-  std::shared_ptr<BaseAST> func_def;
+  std::unique_ptr<BaseAST> func_def;
 
   void Dump() const override {
     std::cout << "CompUnitAST { ";
@@ -93,12 +111,121 @@ public:
   }
 };
 
+// -----------------------------------------------------------------
+
+class DeclAST : public BaseAST {
+public:
+  std::unique_ptr<BaseAST> const_decl;
+
+  void Dump() const override {
+    std::cout << "DeclAST { ";
+    const_decl->Dump();
+    std::cout << " }";
+  }
+
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    // TODO
+    return 0;
+  }
+};
+
+
+class ConstDeclAST : public BaseAST {
+public:
+  std::unique_ptr<BaseAST> b_type;
+  std::unique_ptr<BaseAST> const_def_list;
+
+  void Dump() const override {
+    std::cout << "ConstDeclAST { ";
+    b_type->Dump();
+    std::cout << ", ";
+    const_def_list->Dump();
+    std::cout << " }";
+  }
+
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    // TODO
+    return 0;
+  }
+};
+
+
+class ConstDefListAST : public BaseAST {
+public:
+  std::vector<std::unique_ptr<BaseAST>> const_defs;
+
+  void Dump() const override {
+    std::cout << "ConstDefListAST { ";
+    for (const auto &const_def : const_defs) {
+      const_def->Dump();
+      std::cout << ' ';
+    }
+    std::cout << " }";
+  }
+
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    // TODO
+    return 0;
+  }
+};
+
+
+class BTypeAST : public BaseAST {
+public:
+  std::string type;
+
+  void Dump() const override {
+    std::cout << "BTypeAST { " << type << " }";
+  }
+
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    // TODO
+    return 0;
+  }
+};
+
+
+class ConstDefAST: public BaseAST {
+public:
+  std::string ident;
+  std::unique_ptr<BaseAST> const_init_val;
+
+  void Dump() const override {
+    std::cout << "ConstDefAST { " << ident << ", ";
+    const_init_val->Dump();
+    std::cout << " }";
+  }
+
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    // TODO
+    return 0;
+  }
+};
+
+
+class ConstInitValAST : public BaseAST {
+public:
+  std::unique_ptr<BaseAST> const_exp;
+
+  void Dump() const override {
+    std::cout << "ConstInitValAST { ";
+    const_exp->Dump();
+    std::cout << " }";
+  }
+
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    // TODO
+    return 0;
+  }
+};
+
+// -----------------------------------------------------------------
 
 class FuncDefAST : public BaseAST {
 public:
-  std::shared_ptr<BaseAST> func_type;
+  std::unique_ptr<BaseAST> func_type;
   std::string ident;
-  std::shared_ptr<BaseAST> block;
+  std::unique_ptr<BaseAST> block;
 
   void Dump() const override {
     std::cout << "FuncDefAST { ";
@@ -155,14 +282,15 @@ public:
   }
 };
 
+// -----------------------------------------------------------------
 
 class BlockAST : public BaseAST {
 public:
-  std::shared_ptr<BaseAST> stmt;
+  std::unique_ptr<BaseAST> block_item_list;
 
   void Dump() const override {
     std::cout << "BlockAST { ";
-    stmt->Dump();
+    block_item_list->Dump();
     std::cout << " }";
   }
 
@@ -170,13 +298,71 @@ public:
     #ifdef PRINT
       std::cout << typeid(*this).name() << std::endl;
     #endif
-    oss << "\%entry: ";
 
-    if (stmt->GenIR( global_name_ctr, oss) < 0) {
-      std::cerr << "error: stmt in BlockAST" << std::endl;
-      exit(-1);
+    // TODO
+    return 0;
+
+    // oss << "\%entry: ";
+
+    // if (stmt->GenIR( global_name_ctr, oss) < 0) {
+    //   std::cerr << "error: stmt in BlockAST" << std::endl;
+    //   exit(-1);
+    // }
+
+    // return 0;
+  }
+};
+
+
+class BlockItemListAST : public BaseAST {
+public:
+  std::vector<std::unique_ptr<BaseAST>> block_items;
+
+  void Dump() const override {
+    std::cout << "BlockItemListAST { ";
+    for (const auto &block_item : block_items) {
+      block_item->Dump();
+      std::cout << ' ';
     }
+    std::cout << " }";
+  }
 
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    // TODO
+    return 0;
+  }
+};
+
+
+class BlockItemAST1 : public BaseAST {
+public:
+  std::unique_ptr<BaseAST> decl;
+
+  void Dump() const override {
+    std::cout << "BlockItemAST1 { ";
+    decl->Dump();
+    std::cout << " }";
+  }
+
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    // TODO
+    return 0;
+  }
+};
+
+
+class BlockItemAST2 : public BaseAST {
+public:
+  std::unique_ptr<BaseAST> stmt;
+
+  void Dump() const override {
+    std::cout << "BlockItemAST2 { ";
+    stmt->Dump();
+    std::cout << " }";
+  }
+
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    // TODO
     return 0;
   }
 };
@@ -184,7 +370,7 @@ public:
 
 class StmtAST : public BaseAST {
 public:
-  std::shared_ptr<BaseAST> exp;
+  std::unique_ptr<BaseAST> exp;
 
   void Dump() const override {
     std::cout << "StmtAST { ";
@@ -207,10 +393,11 @@ public:
   }
 };
 
+// -----------------------------------------------------------------
 
 class ExpAST : public BaseAST {
 public:
-  std::shared_ptr<BaseAST> l_or_exp;
+  std::unique_ptr<BaseAST> l_or_exp;
 
   void Dump() const override {
     std::cout << "ExpAST { ";
@@ -234,9 +421,24 @@ public:
 };
 
 
+class LValAST : public BaseAST {
+public:
+  std::string ident;
+
+  void Dump() const override {
+    std::cout << "LValAST { " << ident << " }";
+  }
+
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    // TODO
+    return 0;
+  }
+};
+
+
 class PrimaryExpAST1 : public BaseAST {
 public:
-  std::shared_ptr<BaseAST> exp;
+  std::unique_ptr<BaseAST> exp;
 
   void Dump() const override {
     std::cout << "PrimaryExpAST1 { ( ";
@@ -262,7 +464,7 @@ public:
 
 class PrimaryExpAST2 : public BaseAST {
 public:
-  std::shared_ptr<BaseAST> number;
+  std::unique_ptr<BaseAST> number;
 
   void Dump() const override {
     std::cout << "PrimaryExpAST2 { ";
@@ -281,6 +483,23 @@ public:
 
     name = number->name;
 
+    return 0;
+  }
+};
+
+
+class PrimaryExpAST3 : public BaseAST {
+public:
+  std::unique_ptr<BaseAST> l_val;
+
+  void Dump() const override {
+    std::cout << "PrimaryExpAST3 { ";
+    l_val->Dump();
+    std::cout << " }";
+  }
+
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {  
+    // TODO
     return 0;
   }
 };
@@ -307,7 +526,7 @@ public:
 
 class UnaryExpAST1 : public BaseAST {
 public:
-  std::shared_ptr<BaseAST> primary_exp;
+  std::unique_ptr<BaseAST> primary_exp;
 
   void Dump() const override {
     std::cout << "UnaryExpAST1 { ";
@@ -333,8 +552,8 @@ public:
 
 class UnaryExpAST2 : public BaseAST {
 public:
-  std::shared_ptr<BaseAST> unary_op;
-  std::shared_ptr<BaseAST> unary_exp;
+  std::unique_ptr<BaseAST> unary_op;
+  std::unique_ptr<BaseAST> unary_exp;
 
   void Dump() const override {
     std::cout << "UnaryExpAST2 { ";
@@ -436,7 +655,7 @@ public:
 
 class MulExpAST1 : public BaseAST {
 public:
-  std::shared_ptr<BaseAST> unary_exp;
+  std::unique_ptr<BaseAST> unary_exp;
 
   void Dump() const override {
     std::cout << "MulExpAST1 { ";
@@ -462,9 +681,9 @@ public:
 
 class MulExpAST2 : public BaseAST {
 public:
-  std::shared_ptr<BaseAST> mul_exp;
-  std::shared_ptr<BaseAST> bin_pri_op;
-  std::shared_ptr<BaseAST> unary_exp;
+  std::unique_ptr<BaseAST> mul_exp;
+  std::unique_ptr<BaseAST> bin_pri_op;
+  std::unique_ptr<BaseAST> unary_exp;
 
   void Dump() const override {
     std::cout << "MulExpAST2 { ";
@@ -545,9 +764,38 @@ public:
 };
 
 
+class BinPriOpAST : public BaseAST {
+public:
+  bin_pri_op_t op;
+
+  void Dump() const override {
+    std::cout << "BinPriOpAST { ";
+    switch (op) {
+      case mul_op:
+        std::cout << '*';
+        break;
+      case div_op:
+        std::cout << '/';
+        break;
+      case mod_op:
+        std::cout << '%';
+        break;
+    }
+    std::cout << " }";
+  }
+
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    return op;
+  }
+};
+
+
 class AddExpAST1 : public BaseAST {
 public:
-  std::shared_ptr<BaseAST> mul_exp;
+  std::unique_ptr<BaseAST> mul_exp;
 
   void Dump() const override {
     std::cout << "AddExpAST1 { ";
@@ -573,9 +821,9 @@ public:
 
 class AddExpAST2 : public BaseAST {
 public:
-  std::shared_ptr<BaseAST> add_exp;
-  std::shared_ptr<BaseAST> bin_op;
-  std::shared_ptr<BaseAST> mul_exp;
+  std::unique_ptr<BaseAST> add_exp;
+  std::unique_ptr<BaseAST> bin_op;
+  std::unique_ptr<BaseAST> mul_exp;
 
   void Dump() const override {
     std::cout << "AddExpAST2 { ";
@@ -648,9 +896,35 @@ public:
 };
 
 
+class BinOpAST : public BaseAST {
+public:
+  bin_op_t op;
+
+  void Dump() const override {
+    std::cout << "BinOpAST { ";
+    switch (op) {
+      case add_op:
+        std::cout << '+';
+        break;
+      case sub_op:
+        std::cout << '-';
+        break;
+    }
+    std::cout << " }";
+  }
+
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    return op;
+  }
+};
+
+
 class RelExpAST1 : public BaseAST {
 public:
-  std::shared_ptr<BaseAST> add_exp;
+  std::unique_ptr<BaseAST> add_exp;
 
   void Dump() const override {
     std::cout << "RelExpAST1 { ";
@@ -676,9 +950,9 @@ public:
 
 class RelExpAST2 : public BaseAST {
 public:
-  std::shared_ptr<BaseAST> rel_exp;
-  std::shared_ptr<BaseAST> rel_op;
-  std::shared_ptr<BaseAST> add_exp;
+  std::unique_ptr<BaseAST> rel_exp;
+  std::unique_ptr<BaseAST> rel_op;
+  std::unique_ptr<BaseAST> add_exp;
 
   void Dump() const override {
     std::cout << "RelExpAST2 { ";
@@ -767,9 +1041,41 @@ public:
 };
 
 
+class RelOpAST : public BaseAST {
+public:
+  rel_op_t op;
+
+  void Dump() const override {
+    std::cout << "RelOpAST { ";
+    switch (op) {
+      case less_op:
+        std::cout << '<';
+        break;
+      case greater_op:
+        std::cout << '>';
+        break;
+      case less_equal_op:
+        std::cout << "<=";
+        break;
+      case greater_equal_op:
+        std::cout << ">=";
+        break;
+    }
+    std::cout << " }";
+  }
+
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    return op;
+  }
+};
+
+
 class EqExpAST1 : public BaseAST {
 public:
-  std::shared_ptr<BaseAST> rel_exp;
+  std::unique_ptr<BaseAST> rel_exp;
 
   void Dump() const override {
     std::cout << "EqExpAST1 { ";
@@ -795,9 +1101,9 @@ public:
 
 class EqExpAST2 : public BaseAST {
 public:
-  std::shared_ptr<BaseAST> eq_exp;
-  std::shared_ptr<BaseAST> eq_op;
-  std::shared_ptr<BaseAST> rel_exp;
+  std::unique_ptr<BaseAST> eq_exp;
+  std::unique_ptr<BaseAST> eq_op;
+  std::unique_ptr<BaseAST> rel_exp;
 
   void Dump() const override {
     std::cout << "EqExpAST2 { ";
@@ -870,9 +1176,35 @@ public:
 };
 
 
+class EqOpAST : public BaseAST {
+public:
+  eq_op_t op;
+
+  void Dump() const override {
+    std::cout << "EqOpAST { ";
+    switch (op) {
+      case equal_op:
+        std::cout << "==";
+        break;
+      case not_equal_op:
+        std::cout << "!=";
+        break;
+    }
+    std::cout << " }";
+  }
+
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
+    #ifdef PRINT
+      std::cout << typeid(*this).name() << std::endl;
+    #endif
+    return op;
+  }
+};
+
+
 class LAndExpAST1 : public BaseAST {
 public:
-  std::shared_ptr<BaseAST> eq_exp;
+  std::unique_ptr<BaseAST> eq_exp;
 
   void Dump() const override {
     std::cout << "LAndExpAST1 { ";
@@ -898,8 +1230,8 @@ public:
 
 class LAndExpAST2 : public BaseAST {
 public:
-  std::shared_ptr<BaseAST> l_and_exp;
-  std::shared_ptr<BaseAST> eq_exp;
+  std::unique_ptr<BaseAST> l_and_exp;
+  std::unique_ptr<BaseAST> eq_exp;
 
   void Dump() const override {
     std::cout << "LAndExpAST2 { ";
@@ -952,7 +1284,7 @@ public:
 
 class LOrExpAST1 : public BaseAST {
 public:
-  std::shared_ptr<BaseAST> l_and_exp;
+  std::unique_ptr<BaseAST> l_and_exp;
 
   void Dump() const override {
     std::cout << "LOrExpAST1 { ";
@@ -978,8 +1310,8 @@ public:
 
 class LOrExpAST2 : public BaseAST {
 public:
-  std::shared_ptr<BaseAST> l_or_exp;
-  std::shared_ptr<BaseAST> l_and_exp;
+  std::unique_ptr<BaseAST> l_or_exp;
+  std::unique_ptr<BaseAST> l_and_exp;
 
   void Dump() const override {
     std::cout << "LOrExpAST2 { ";
@@ -1026,115 +1358,18 @@ public:
   }
 };
 
-
-class BinPriOpAST : public BaseAST {
+class ConstExpAST : public BaseAST {
 public:
-  bin_pri_op_t op;
+  std::unique_ptr<BaseAST> exp;
 
   void Dump() const override {
-    std::cout << "BinPriOpAST { ";
-    switch (op) {
-      case mul_op:
-        std::cout << '*';
-        break;
-      case div_op:
-        std::cout << '/';
-        break;
-      case mod_op:
-        std::cout << '%';
-        break;
-    }
+    std::cout << "ConstExpAST { ";
+    exp->Dump();
     std::cout << " }";
   }
 
   int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
-    #ifdef PRINT
-      std::cout << typeid(*this).name() << std::endl;
-    #endif
-    return op;
-  }
-};
-
-
-class BinOpAST : public BaseAST {
-public:
-  bin_op_t op;
-
-  void Dump() const override {
-    std::cout << "BinOpAST { ";
-    switch (op) {
-      case add_op:
-        std::cout << '+';
-        break;
-      case sub_op:
-        std::cout << '-';
-        break;
-    }
-    std::cout << " }";
-  }
-
-  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
-    #ifdef PRINT
-      std::cout << typeid(*this).name() << std::endl;
-    #endif
-    return op;
-  }
-};
-
-
-class RelOpAST : public BaseAST {
-public:
-  rel_op_t op;
-
-  void Dump() const override {
-    std::cout << "RelOpAST { ";
-    switch (op) {
-      case less_op:
-        std::cout << '<';
-        break;
-      case greater_op:
-        std::cout << '>';
-        break;
-      case less_equal_op:
-        std::cout << "<=";
-        break;
-      case greater_equal_op:
-        std::cout << ">=";
-        break;
-    }
-    std::cout << " }";
-  }
-
-  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
-    #ifdef PRINT
-      std::cout << typeid(*this).name() << std::endl;
-    #endif
-    return op;
-  }
-};
-
-
-class EqOpAST : public BaseAST {
-public:
-  eq_op_t op;
-
-  void Dump() const override {
-    std::cout << "EqOpAST { ";
-    switch (op) {
-      case equal_op:
-        std::cout << "==";
-        break;
-      case not_equal_op:
-        std::cout << "!=";
-        break;
-    }
-    std::cout << " }";
-  }
-
-  int GenIR(int *global_name_ctr, std::ostringstream &oss) override {
-    #ifdef PRINT
-      std::cout << typeid(*this).name() << std::endl;
-    #endif
-    return op;
+    // TODO
+    return 0;
   }
 };
