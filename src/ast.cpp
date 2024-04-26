@@ -102,6 +102,8 @@ void ConstDefAST::Dump() const {
 
 int ConstDefAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
   int val = const_init_val->eval();
+  sym_tab.insert(ident, val);
+  return 0;
 }
 
 
@@ -112,7 +114,10 @@ void ConstInitValAST::Dump() const {
 }
 
 int ConstInitValAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
-  // TODO
+  if (const_exp->GenIR(global_name_ctr, oss) < 0) {
+    std::cerr << "error: const_exp in ConstInitValAST" << std::endl;
+    exit(-1);
+  }
   return 0;
 }
 
@@ -185,33 +190,20 @@ int BlockAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
   std::cout << typeid(*this).name() << std::endl;
 #endif
 
-  // TODO
-  // return 0;
-
-  oss << "\%entry: ";
-
-  //! Temporary
-  assert(block_item_list_vec.size() == 1);
-
-  if ((block_item_list_vec[0])->GenIR(global_name_ctr, oss) < 0) {
-    std::cerr << "error: stmt in BlockAST" << std::endl;
-    exit(-1);
+  for (auto &block_item : block_item_list_vec) {
+    if (block_item->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error: block_item in BlockAST" << std::endl;
+      exit(-1);
+    }
   }
 
   return 0;
 }
 
 
-void BlockItemListAST::Dump() const {
-  std::cout << "BlockItemListAST { ";
-  block_item->Dump();
-  std::cout << ", ";
-  next_list->Dump();
-  std::cout << " }";
-}
+void BlockItemListAST::Dump() const {}
 
 int BlockItemListAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
-  // TODO
   return 0;
 }
 
@@ -223,7 +215,10 @@ void BlockItemAST1::Dump() const {
 }
 
 int BlockItemAST1::GenIR(int *global_name_ctr, std::ostringstream &oss) {
-  // TODO
+  if (decl->GenIR(global_name_ctr, oss) < 0) {
+    std::cerr << "error: decl in BlockItemAST1" << std::endl;
+    exit(-1);
+  }
   return 0;
 }
 
@@ -235,7 +230,10 @@ void BlockItemAST2::Dump() const {
 }
 
 int BlockItemAST2::GenIR(int *global_name_ctr, std::ostringstream &oss) {
-  // TODO
+  if (stmt->GenIR(global_name_ctr, oss) < 0) {
+    std::cerr << "error: stmt in BlockItemAST2" << std::endl;
+    exit(-1);
+  }
   return 0;
 }
 
@@ -288,8 +286,13 @@ int ExpAST::eval() { return l_or_exp->eval(); }
 void LValAST::Dump() const { std::cout << "LValAST { " << ident << " }"; }
 
 int LValAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
-  // TODO
-  return 0;
+  if (sym_tab.exists(ident)) {
+    name = sym_tab.lookup(ident);
+    return 0;
+  } else {
+    std::cerr << "error: variable not found in LValAST" << std::endl;
+    exit(-1);
+  }
 }
 
 int LValAST::eval() {
@@ -355,7 +358,13 @@ void PrimaryExpAST3::Dump() const {
 }
 
 int PrimaryExpAST3::GenIR(int *global_name_ctr, std::ostringstream &oss) {
-  // TODO
+  if (l_val->GenIR(global_name_ctr, oss) < 0) {
+    std::cerr << "error: l_val in PrimaryExpAST3" << std::endl;
+    exit(-1);
+  }
+
+  name = l_val->name;
+
   return 0;
 }
 
@@ -1248,7 +1257,13 @@ void ConstExpAST::Dump() const {
 }
 
 int ConstExpAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
-  // TODO
+  if (exp->GenIR(global_name_ctr, oss) < 0) {
+    std::cerr << "error: exp in ConstExpAST" << std::endl;
+    exit(-1);
+  }
+
+  name = exp->name;
+
   return 0;
 }
 

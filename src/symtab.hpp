@@ -31,6 +31,10 @@ private:
 	std::vector<std::unique_ptr<SymFrame>> frame_stack;
 
 public:
+	SymTab() {
+		frame_stack.push_back(std::make_unique<SymFrame>());
+	}
+
 	void insert(std::string name, int value) {
 		frame_stack.back()->insert(name, value);
 	}
