@@ -92,21 +92,6 @@ void Visit(const koopa_raw_slice_t &slice,
 
   int *reg_ctr1 = new int;
 
-  //! If slice is a list of instructions, only visit the last one (return instruction)
-  //! Must be removed once .data segment is populated!
-  if (ret_only) {
-    int ret_loc = 0;
-    for (size_t i = 0; i < slice.len; ++i) {
-      if (reinterpret_cast<koopa_raw_value_t>(slice.buffer[i])->kind.tag == KOOPA_RVT_RETURN) {
-        ret_loc = i;
-        break;
-      }
-    }
-
-    Visit(reinterpret_cast<koopa_raw_value_t>(slice.buffer[ret_loc]), out, global_reg_ctr, reg_ctr1);
-    return;
-  }
-
   for (size_t i = 0; i < slice.len; ++i) {
     auto ptr = slice.buffer[i];
     // 根据 slice 的 kind 决定将 ptr 视作何种元素

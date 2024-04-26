@@ -84,7 +84,19 @@ ConstDecl
     std::cout << "ConstDecl" << std::endl;
     auto ast = new ConstDeclAST();
     ast->b_type = unique_ptr<BaseAST>($2);
-    ast->const_def_list = unique_ptr<BaseAST>($3);
+    ast->const_def = unique_ptr<BaseAST>($3);
+
+    auto const_def_list = unique_ptr<BaseAST>($4);
+    vector<unique_ptr<BaseAST>> temp_const_def_list_vec;
+    while (static_cast<ConstDefListAST *>(const_def_list.get())->next_list != nullptr) {
+      temp_const_def_list_vec.push_back(move(static_cast<ConstDefListAST *>(const_def_list.get())->const_def));
+      const_def_list = move(static_cast<ConstDefListAST *>(const_def_list.get())->next_list);
+    }
+
+    cout << "const def list of len " << temp_const_def_list_vec.size() << endl;
+    
+    ast->const_def_list_vec = move(temp_const_def_list_vec);
+    
     $$ = ast;
   }
   ;
@@ -102,15 +114,14 @@ ConstDefList
   : {
     std::cout << "ConstDefList1" << std::endl;
     auto ast = new ConstDefListAST();
+    ast->next_list = nullptr;
     $$ = ast;
   }
   | ConstDefList ',' ConstDef {
     std::cout << "ConstDefList2" << std::endl;
     auto ast = new ConstDefListAST();
-    // Since unique_ptr's can't be copied, we move them
-    // Makes all ConstDefLists except the final one invalid
-    ast->const_defs = move(unique_ptr<BaseAST>($1)->const_defs); 
-    (ast->const_defs).push_back(unique_ptr<BaseAST>($3));
+    ast->const_def = unique_ptr<BaseAST>($3);
+    ast->next_list = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   ;
@@ -162,7 +173,19 @@ Block
   : '{' BlockItemList '}' {
     std::cout << "Block" << std::endl;
     auto ast = new BlockAST();
-    ast->block_item_list = unique_ptr<BaseAST>($2);
+    
+    auto block_item_list = unique_ptr<BaseAST>($2);
+    vector<unique_ptr<BaseAST>> temp_block_item_list_vec;
+    int ctr = 0;
+    while (static_cast<BlockItemListAST *>(block_item_list.get())->next_list != nullptr) {
+      temp_block_item_list_vec.insert(temp_block_item_list_vec.begin(), move(static_cast<BlockItemListAST *>(block_item_list.get())->block_item));
+      cout << "pushed back" << endl;
+      block_item_list = move(static_cast<BlockItemListAST *>(block_item_list.get())->next_list);
+      ctr++;
+    }
+    cout << "exiting traversal, ctr = " << ctr << endl;
+    ast->block_item_list_vec = move(temp_block_item_list_vec);
+
     $$ = ast;
   }
   ;
@@ -171,15 +194,15 @@ BlockItemList
   : {
     std::cout << "BlockItemList1" << std::endl;
     auto ast = new BlockItemListAST();
+    ast->next_list = nullptr;
     $$ = ast;
   }
-  | BlockItem BlockItemList {
+  | BlockItemList BlockItem {
     std::cout << "BlockItemList2" << std::endl;
     auto ast = new BlockItemListAST();
-    // Since unique_ptr's can't be copied, we move them
-    // Makes all BlockItemLists except the final one invalid
-    ast->block_items = move(unique_ptr<BaseAST>($2)->block_items);
-    (ast->block_items).push_back(unique_ptr<BaseAST>($1));
+    cout << "appending to list" << endl;
+    ast->block_item = unique_ptr<BaseAST>($2);
+    ast->next_list = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   ;

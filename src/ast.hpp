@@ -83,8 +83,6 @@ public:
   virtual ~BaseAST() = default;
 
   std::string name;
-  std::vector<std::unique_ptr<BaseAST>> const_defs;
-  std::vector<std::unique_ptr<BaseAST>> block_items;
 
   virtual void Dump() const = 0;
 
@@ -133,13 +131,19 @@ public:
 class ConstDeclAST : public BaseAST {
 public:
   std::unique_ptr<BaseAST> b_type;
-  std::unique_ptr<BaseAST> const_def_list;
+  std::unique_ptr<BaseAST> const_def;
+  std::vector<std::unique_ptr<BaseAST>> const_def_list_vec;
 
   void Dump() const override {
     std::cout << "ConstDeclAST { ";
     b_type->Dump();
     std::cout << ", ";
-    const_def_list->Dump();
+    const_def->Dump();
+    std::cout << ", ";
+    for (int i = 0; i < const_def_list_vec.size(); ++i) {
+      const_def_list_vec[i]->Dump();
+      std::cout << ", ";
+    }
     std::cout << " }";
   }
 
@@ -152,14 +156,14 @@ public:
 
 class ConstDefListAST : public BaseAST {
 public:
-  std::vector<std::unique_ptr<BaseAST>> const_defs;
+  std::unique_ptr<BaseAST> const_def;
+  std::unique_ptr<BaseAST> next_list;
 
   void Dump() const override {
     std::cout << "ConstDefListAST { ";
-    for (const auto &const_def : const_defs) {
-      const_def->Dump();
-      std::cout << ' ';
-    }
+    const_def->Dump();
+    std::cout << ", ";
+    next_list->Dump();
     std::cout << " }";
   }
 
@@ -286,11 +290,14 @@ public:
 
 class BlockAST : public BaseAST {
 public:
-  std::unique_ptr<BaseAST> block_item_list;
+  std::vector<std::unique_ptr<BaseAST>> block_item_list_vec;
 
   void Dump() const override {
     std::cout << "BlockAST { ";
-    block_item_list->Dump();
+    for (auto &block_item : block_item_list_vec) {
+      block_item->Dump();
+      std::cout << ", ";
+    }
     std::cout << " }";
   }
 
@@ -316,14 +323,14 @@ public:
 
 class BlockItemListAST : public BaseAST {
 public:
-  std::vector<std::unique_ptr<BaseAST>> block_items;
+  std::unique_ptr<BaseAST> block_item;
+  std::unique_ptr<BaseAST> next_list;
 
   void Dump() const override {
     std::cout << "BlockItemListAST { ";
-    for (const auto &block_item : block_items) {
-      block_item->Dump();
-      std::cout << ' ';
-    }
+    block_item->Dump();
+    std::cout << ", ";
+    next_list->Dump();
     std::cout << " }";
   }
 
