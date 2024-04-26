@@ -8,6 +8,7 @@
 
 #include "ast.hpp"
 #include "asm.hpp"
+#include "symtab.hpp"
 
 using namespace std;
 
@@ -53,6 +54,8 @@ int main(int argc, const char *argv[]) {
     cerr << "error: generating AST" << endl;
     exit(-1);
   }
+
+  SymTab sym_tab = SymTab();
 
   // IR mode
   if (strcmp(mode, "-koopa") == 0) {  

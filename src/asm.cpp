@@ -177,7 +177,13 @@ void Visit(const koopa_raw_value_t &value,
         kind_str = "unsupported";
         break;
     }
-    std::cout << "visiting value of kind: " << kind_str << std::endl;
+    std::cout << "visiting value of kind: " << kind_str << " of name ";
+    if (value->name) {
+      std::cout << value->name;
+    } else {
+      std::cout << "no name";
+    }
+    std::cout << std::endl;
   #endif
 
   // 根据指令类型判断后续需要如何访问
