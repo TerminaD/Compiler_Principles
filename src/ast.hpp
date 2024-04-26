@@ -86,7 +86,7 @@ public:
 
   virtual int GenIR(int *global_name_ctr, std::ostringstream &oss) = 0;
 
-  virtual int eval() = 0;
+  virtual int eval() { return 0; }
 };
 
 // -----------------------------------------------------------------
@@ -128,6 +128,10 @@ class ConstDefListAST : public BaseAST {
 public:
   std::unique_ptr<BaseAST> const_def;
   std::unique_ptr<BaseAST> next_list;
+
+  void Dump() const override;
+
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override;
 };
 
 
@@ -344,8 +348,6 @@ public:
   void Dump() const override;
 
   int GenIR(int *global_name_ctr, std::ostringstream &oss) override;
-
-  int eval() override;
 };
 
 
@@ -382,8 +384,6 @@ public:
   void Dump() const override;
 
   int GenIR(int *global_name_ctr, std::ostringstream &oss) override;
-
-  int eval() override;
 };
 
 
@@ -420,8 +420,6 @@ public:
   void Dump() const override;
 
   int GenIR(int *global_name_ctr, std::ostringstream &oss) override;
-
-  int eval() override;
 };
 
 

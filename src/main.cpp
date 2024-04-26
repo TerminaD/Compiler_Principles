@@ -55,8 +55,6 @@ int main(int argc, const char *argv[]) {
     exit(-1);
   }
 
-  SymTab sym_tab = SymTab();
-
   // IR mode
   if (strcmp(mode, "-koopa") == 0) {  
     std::ofstream out(output);

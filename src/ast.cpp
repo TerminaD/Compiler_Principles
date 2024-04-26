@@ -9,6 +9,9 @@
 #include "ast.hpp"
 #include "symtab.hpp"
 
+
+SymTab sym_tab = SymTab();
+
 // -----------------------------------------------------------------
 
 void CompUnitAST::Dump() const {
@@ -75,6 +78,13 @@ int ConstDeclAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
     }
   }
 
+  return 0;
+}
+
+
+void ConstDefListAST::Dump() const {}
+
+int ConstDefListAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
   return 0;
 }
 
@@ -529,6 +539,8 @@ int MulExpAST1::GenIR(int *global_name_ctr, std::ostringstream &oss) {
   return 0;
 }
 
+int MulExpAST1::eval() { return unary_exp->eval(); }
+
 
 void MulExpAST2::Dump() const {
   std::cout << "MulExpAST2 { ";
@@ -610,6 +622,26 @@ int MulExpAST2::GenIR(int *global_name_ctr, std::ostringstream &oss) {
   }
 }
 
+int MulExpAST2::eval() {
+  int val1 = mul_exp->eval();
+  int val2 = unary_exp->eval();
+
+  switch (static_cast<BinPriOpAST *>(bin_pri_op.get())->op) {
+  case mul_op:
+	return val1 * val2;
+
+  case div_op:
+	return val1 / val2;
+
+  case mod_op:
+	return val1 % val2;
+
+  default:
+	std::cerr << "error: undefined operator in MulExpAST2" << std::endl;
+	exit(-1);
+  }
+}
+
 
 void BinPriOpAST::Dump() const {
   std::cout << "BinPriOpAST { ";
@@ -654,6 +686,8 @@ int AddExpAST1::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 
   return 0;
 }
+
+int AddExpAST1::eval() { return mul_exp->eval(); }
 
 
 void AddExpAST2::Dump() const {
@@ -725,6 +759,23 @@ int AddExpAST2::GenIR(int *global_name_ctr, std::ostringstream &oss) {
   }
 }
 
+int AddExpAST2::eval() {
+  int val1 = add_exp->eval();
+  int val2 = mul_exp->eval();
+
+  switch (static_cast<BinOpAST *>(bin_op.get())->op) {
+  case add_op:
+    return val1 + val2;
+
+  case sub_op:
+    return val1 - val2;
+
+  default:
+    std::cerr << "error: undefined operator in AddExpAST2" << std::endl;
+    exit(-1);
+  }
+}
+
 
 void BinOpAST::Dump() const {
   std::cout << "BinOpAST { ";
@@ -766,6 +817,8 @@ int RelExpAST1::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 
   return 0;
 }
+
+int RelExpAST1::eval() { return add_exp->eval(); } 
 
 
 void RelExpAST2::Dump() const {
@@ -853,6 +906,29 @@ int RelExpAST2::GenIR(int *global_name_ctr, std::ostringstream &oss) {
   }
 }
 
+int RelExpAST2::eval() {
+  int val1 = rel_exp->eval();
+  int val2 = add_exp->eval();
+
+  switch (static_cast<RelOpAST *>(rel_op.get())->op) {
+  case less_op:
+    return val1 < val2;
+
+  case greater_op:
+    return val1 > val2;
+
+  case less_equal_op:
+    return val1 <= val2;
+
+  case greater_equal_op:
+    return val1 >= val2;
+
+  default:
+    std::cerr << "error: undefined operator in RelExpAST2" << std::endl;
+    exit(-1);
+  }
+}
+
 
 void RelOpAST::Dump() const {
   std::cout << "RelOpAST { ";
@@ -900,6 +976,8 @@ int EqExpAST1::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 
   return 0;
 }
+
+int EqExpAST1::eval() { return rel_exp->eval(); }
 
 
 void EqExpAST2::Dump() const {
@@ -971,6 +1049,21 @@ int EqExpAST2::GenIR(int *global_name_ctr, std::ostringstream &oss) {
   }
 }
 
+int EqExpAST2::eval() {
+  int val1 = eq_exp->eval();
+  int val2 = rel_exp->eval();
+  
+  switch (static_cast<EqOpAST *>(eq_op.get())->op) {
+  case equal_op:
+    return val1 == val2;
+  case not_equal_op:
+    return val1 != val2;
+  default:
+    std::cerr << "error: undefined operator in EqExpAST2" << std::endl;
+    exit(-1);
+  }
+}
+
 
 void EqOpAST::Dump() const {
   std::cout << "EqOpAST { ";
@@ -1012,6 +1105,8 @@ int LAndExpAST1::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 
   return 0;
 }
+
+int LAndExpAST1::eval() { return eq_exp->eval(); }
 
 
 void LAndExpAST2::Dump() const {
@@ -1063,6 +1158,13 @@ int LAndExpAST2::GenIR(int *global_name_ctr, std::ostringstream &oss) {
   return 0;
 }
 
+int LAndExpAST2::eval() {
+  int val1 = l_and_exp->eval();
+  int val2 = eq_exp->eval();
+
+  return val1 && val2;
+}
+
 
 void LOrExpAST1::Dump() const {
   std::cout << "LOrExpAST1 { ";
@@ -1083,6 +1185,8 @@ int LOrExpAST1::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 
   return 0;
 }
+
+int LOrExpAST1::eval() { return l_and_exp->eval(); }
 
 
 void LOrExpAST2::Dump() const {
@@ -1127,6 +1231,13 @@ int LOrExpAST2::GenIR(int *global_name_ctr, std::ostringstream &oss) {
   oss << name << " = ne 0, " << name1 << "\n";
 
   return 0;
+}
+
+int LOrExpAST2::eval() {
+  int val1 = l_or_exp->eval();
+  int val2 = l_and_exp->eval();
+
+  return val1 || val2;
 }
 
 
