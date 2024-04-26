@@ -85,13 +85,21 @@ int ConstDeclAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 void ConstDefListAST::Dump() const {}
 
 int ConstDefListAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
+#ifdef PRINT
+  std::cout << typeid(*this).name() << std::endl;
+#endif
   return 0;
 }
 
 
 void BTypeAST::Dump() const { std::cout << "BTypeAST { " << type << " }"; }
 
-int BTypeAST::GenIR(int *global_name_ctr, std::ostringstream &oss) { return 0; }
+int BTypeAST::GenIR(int *global_name_ctr, std::ostringstream &oss) { 
+#ifdef PRINT
+  std::cout << typeid(*this).name() << std::endl;
+#endif
+  return 0; 
+}
 
 
 void ConstDefAST::Dump() const {
@@ -101,6 +109,9 @@ void ConstDefAST::Dump() const {
 }
 
 int ConstDefAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
+  #ifdef PRINT
+  std::cout << typeid(*this).name() << std::endl;
+#endif
   int val = const_init_val->eval();
   sym_tab.insert(ident, val);
   return 0;
@@ -114,6 +125,9 @@ void ConstInitValAST::Dump() const {
 }
 
 int ConstInitValAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
+  #ifdef PRINT
+  std::cout << typeid(*this).name() << std::endl;
+#endif
   if (const_exp->GenIR(global_name_ctr, oss) < 0) {
     std::cerr << "error: const_exp in ConstInitValAST" << std::endl;
     exit(-1);
@@ -190,6 +204,8 @@ int BlockAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
   std::cout << typeid(*this).name() << std::endl;
 #endif
 
+  oss << "\%entry: ";
+
   for (auto &block_item : block_item_list_vec) {
     if (block_item->GenIR(global_name_ctr, oss) < 0) {
       std::cerr << "error: block_item in BlockAST" << std::endl;
@@ -204,6 +220,9 @@ int BlockAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 void BlockItemListAST::Dump() const {}
 
 int BlockItemListAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
+  #ifdef PRINT
+  std::cout << typeid(*this).name() << std::endl;
+#endif
   return 0;
 }
 
@@ -215,6 +234,9 @@ void BlockItemAST1::Dump() const {
 }
 
 int BlockItemAST1::GenIR(int *global_name_ctr, std::ostringstream &oss) {
+  #ifdef PRINT
+  std::cout << typeid(*this).name() << std::endl;
+#endif
   if (decl->GenIR(global_name_ctr, oss) < 0) {
     std::cerr << "error: decl in BlockItemAST1" << std::endl;
     exit(-1);
@@ -230,6 +252,9 @@ void BlockItemAST2::Dump() const {
 }
 
 int BlockItemAST2::GenIR(int *global_name_ctr, std::ostringstream &oss) {
+  #ifdef PRINT
+  std::cout << typeid(*this).name() << std::endl;
+#endif
   if (stmt->GenIR(global_name_ctr, oss) < 0) {
     std::cerr << "error: stmt in BlockItemAST2" << std::endl;
     exit(-1);
@@ -286,8 +311,11 @@ int ExpAST::eval() { return l_or_exp->eval(); }
 void LValAST::Dump() const { std::cout << "LValAST { " << ident << " }"; }
 
 int LValAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
+  #ifdef PRINT
+  std::cout << typeid(*this).name() << std::endl;
+#endif
   if (sym_tab.exists(ident)) {
-    name = sym_tab.lookup(ident);
+    name = std::to_string(sym_tab.lookup(ident));
     return 0;
   } else {
     std::cerr << "error: variable not found in LValAST" << std::endl;
@@ -358,6 +386,9 @@ void PrimaryExpAST3::Dump() const {
 }
 
 int PrimaryExpAST3::GenIR(int *global_name_ctr, std::ostringstream &oss) {
+  #ifdef PRINT
+  std::cout << typeid(*this).name() << std::endl;
+#endif
   if (l_val->GenIR(global_name_ctr, oss) < 0) {
     std::cerr << "error: l_val in PrimaryExpAST3" << std::endl;
     exit(-1);
@@ -1257,6 +1288,9 @@ void ConstExpAST::Dump() const {
 }
 
 int ConstExpAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
+  #ifdef PRINT
+  std::cout << typeid(*this).name() << std::endl;
+#endif
   if (exp->GenIR(global_name_ctr, oss) < 0) {
     std::cerr << "error: exp in ConstExpAST" << std::endl;
     exit(-1);

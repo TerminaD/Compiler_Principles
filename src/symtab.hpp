@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include <cassert>
+#include <iostream>
 
 
 class SymFrame {
@@ -37,6 +38,7 @@ public:
 
 	void insert(std::string name, int value) {
 		frame_stack.back()->insert(name, value);
+		std::cout << "Inserted " << name << " with value " << value << std::endl;
 	}
 
 	bool exists(std::string name) {
@@ -45,6 +47,7 @@ public:
 				return true;
 		}
 		return false;
+
 	}
 
 	int lookup(std::string name) {	//! Does not check if the name exists
