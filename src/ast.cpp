@@ -356,7 +356,7 @@ int StmtAST1::GenIR(int *global_name_ctr, std::ostringstream &oss) {
   oss << "ret " << exp->name << "\n";
 
   var_decl = false;
-  exit(0);
+  return 0;
 }
 
 void StmtAST2::Dump() const {
