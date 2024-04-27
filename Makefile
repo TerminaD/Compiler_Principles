@@ -28,7 +28,7 @@ CXXFLAGS += -g -O0 -DPRINT
 endif
 
 # No-fold flag
-NOFOLD ?= 0
+NOFOLD ?= 1
 ifeq ($(NOFOLD), 1)
 CFLAGS += -DNOFOLD
 CXXFLAGS += -DNOFOLD

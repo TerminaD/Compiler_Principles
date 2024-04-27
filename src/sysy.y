@@ -42,7 +42,7 @@ using namespace std;
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
-%type <ast_val> FuncDef FuncType Block Stmt Number Exp PrimaryExp UnaryExp UnaryOp AddExp MulExp BinPriOp BinOp LOrExp RelExp EqExp LAndExp RelOp EqOp Decl ConstDecl BType ConstDef ConstDefList ConstInitVal BlockItemList BlockItem LVal ConstExp
+%type <ast_val> FuncDef FuncType Block Stmt Number Exp PrimaryExp UnaryExp UnaryOp AddExp MulExp BinPriOp BinOp LOrExp RelExp EqExp LAndExp RelOp EqOp Decl ConstDecl BType ConstDef ConstDefList ConstInitVal BlockItemList BlockItem LVal ConstExp VarDecl VarDefList VarDef InitVal
 
 %%
 
@@ -72,9 +72,15 @@ CompUnit
 // 这种写法会省下很多内存管理的负担
 Decl
   : ConstDecl {
-    std::cout << "Decl" << std::endl;
-    auto ast = new DeclAST();
+    std::cout << "Decl1" << std::endl;
+    auto ast = new DeclAST1();
     ast->const_decl = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | VarDecl {
+    std::cout << "Decl2" << std::endl;
+    auto ast = new DeclAST2();
+    ast->var_decl = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   ;
@@ -144,6 +150,69 @@ ConstInitVal
     $$ = ast;
   }
   ;
+
+VarDecl
+  : BType VarDef VarDefList ';' {
+    std::cout << "VarDecl" << std::endl;
+    auto ast = new VarDeclAST();
+    ast->b_type = unique_ptr<BaseAST>($1);
+    ast->var_def = unique_ptr<BaseAST>($2);
+
+    auto var_def_list = unique_ptr<BaseAST>($3);
+    vector<unique_ptr<BaseAST>> temp_var_def_list_vec;
+    while (static_cast<VarDefListAST *>(var_def_list.get())->next_list != nullptr) {
+      temp_var_def_list_vec.push_back(move(static_cast<VarDefListAST *>(var_def_list.get())->var_def));
+      var_def_list = move(static_cast<VarDefListAST *>(var_def_list.get())->next_list);
+    }
+
+    cout << "var def list of len " << temp_var_def_list_vec.size() << endl;
+    
+    ast->var_def_list_vec = move(temp_var_def_list_vec);
+    
+    $$ = ast;
+  }
+  ;
+
+VarDefList
+  : {
+    std::cout << "VarDefList1" << std::endl;
+    auto ast = new VarDefListAST();
+    ast->next_list = nullptr;
+    $$ = ast;
+  }
+  | VarDefList ',' VarDef {
+    std::cout << "VarDefList2" << std::endl;
+    auto ast = new VarDefListAST();
+    ast->var_def = unique_ptr<BaseAST>($3);
+    ast->next_list = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  ;
+
+VarDef
+  : IDENT {
+    std::cout << "VarDef1" << std::endl;
+    auto ast = new VarDefAST();
+    ast->ident = *unique_ptr<string>($1);
+    ast->init_val = nullptr;
+    $$ = ast;
+  }
+  | IDENT '=' InitVal {
+    std::cout << "VarDef2" << std::endl;
+    auto ast = new VarDefAST();
+    ast->ident = *unique_ptr<string>($1);
+    ast->init_val = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  ;
+
+InitVal
+  : Exp {
+    std::cout << "InitVal" << std::endl;
+    auto ast = new InitValAST();
+    ast->exp = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
 
 // -----------------------------------------------------------------
 
@@ -224,9 +293,16 @@ BlockItem
 
 Stmt
   : RETURN Exp ';' {
-    std::cout << "Stmt" << std::endl;
-    auto ast = new StmtAST();
+    std::cout << "Stmt1" << std::endl;
+    auto ast = new StmtAST1();
     ast->exp = unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+  | LVal '=' Exp ';' {
+    std::cout << "Stmt2" << std::endl;
+    auto ast = new StmtAST2();
+    ast->l_val = unique_ptr<BaseAST>($1);
+    ast->exp = unique_ptr<BaseAST>($3);
     $$ = ast;
   }
   ;

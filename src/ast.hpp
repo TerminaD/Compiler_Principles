@@ -102,9 +102,19 @@ public:
 
 // -----------------------------------------------------------------
 
-class DeclAST : public BaseAST {
+class DeclAST1 : public BaseAST {
 public:
   std::unique_ptr<BaseAST> const_decl;
+
+  void Dump() const override;
+
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override;
+};
+
+
+class DeclAST2 : public BaseAST {
+public:
+  std::unique_ptr<BaseAST> var_decl;
 
   void Dump() const override;
 
@@ -165,6 +175,50 @@ public:
   int GenIR(int *global_name_ctr, std::ostringstream &oss) override;
 
   int eval() override;
+};
+
+
+class VarDeclAST : public BaseAST {
+public:
+  std::unique_ptr<BaseAST> b_type;
+  std::unique_ptr<BaseAST> var_def;
+  std::vector<std::unique_ptr<BaseAST>> var_def_list_vec;
+
+  void Dump() const override;
+
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override;
+};
+
+
+class VarDefListAST : public BaseAST {
+public:
+  std::unique_ptr<BaseAST> var_def;
+  std::unique_ptr<BaseAST> next_list;
+
+  void Dump() const override;
+
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override;
+};
+
+
+class VarDefAST : public BaseAST {
+public:
+  std::string ident;
+  std::unique_ptr<BaseAST> init_val;
+
+  void Dump() const override;
+
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override;
+};
+
+
+class InitValAST : public BaseAST {
+public:
+  std::unique_ptr<BaseAST> exp;
+
+  void Dump() const override;
+
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override;
 };
 
 // -----------------------------------------------------------------
@@ -233,8 +287,19 @@ public:
 };
 
 
-class StmtAST : public BaseAST {
+class StmtAST1 : public BaseAST {
 public:
+  std::unique_ptr<BaseAST> exp;
+
+  void Dump() const override;
+
+  int GenIR(int *global_name_ctr, std::ostringstream &oss) override;
+};
+
+
+class StmtAST2 : public BaseAST {
+public:
+  std::unique_ptr<BaseAST> l_val;
   std::unique_ptr<BaseAST> exp;
 
   void Dump() const override;

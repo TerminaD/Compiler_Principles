@@ -1,7 +1,10 @@
 #include <cassert>
+#include <csignal>
+#include <cstring>
 #include <iostream>
 #include <memory>
 #include <sstream>
+#include <stdatomic.h>
 #include <string>
 #include <typeinfo>
 #include <vector>
@@ -9,8 +12,8 @@
 #include "ast.hpp"
 #include "symtab.hpp"
 
-
 SymTab sym_tab = SymTab();
+bool var_decl;
 
 // -----------------------------------------------------------------
 
@@ -29,19 +32,31 @@ int CompUnitAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 
 // -----------------------------------------------------------------
 
-void DeclAST::Dump() const {
+void DeclAST1::Dump() const {
   std::cout << "DeclAST { ";
   const_decl->Dump();
   std::cout << " }";
 }
 
-int DeclAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
+int DeclAST1::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 #ifdef PRINT
   std::cout << typeid(*this).name() << std::endl;
 #endif
   return const_decl->GenIR(global_name_ctr, oss);
 }
 
+void DeclAST2::Dump() const {
+  std::cout << "DeclAST { ";
+  var_decl->Dump();
+  std::cout << " }";
+}
+
+int DeclAST2::GenIR(int *global_name_ctr, std::ostringstream &oss) {
+#ifdef PRINT
+  std::cout << typeid(*this).name() << std::endl;
+#endif
+  return var_decl->GenIR(global_name_ctr, oss);
+}
 
 void ConstDeclAST::Dump() const {
   std::cout << "ConstDeclAST { ";
@@ -81,7 +96,6 @@ int ConstDeclAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
   return 0;
 }
 
-
 void ConstDefListAST::Dump() const {}
 
 int ConstDefListAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
@@ -91,16 +105,14 @@ int ConstDefListAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
   return 0;
 }
 
-
 void BTypeAST::Dump() const { std::cout << "BTypeAST { " << type << " }"; }
 
-int BTypeAST::GenIR(int *global_name_ctr, std::ostringstream &oss) { 
+int BTypeAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 #ifdef PRINT
   std::cout << typeid(*this).name() << std::endl;
 #endif
-  return 0; 
+  return 0;
 }
-
 
 void ConstDefAST::Dump() const {
   std::cout << "ConstDefAST { " << ident << ", ";
@@ -109,14 +121,13 @@ void ConstDefAST::Dump() const {
 }
 
 int ConstDefAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
-  #ifdef PRINT
+#ifdef PRINT
   std::cout << typeid(*this).name() << std::endl;
 #endif
   int val = const_init_val->eval();
-  sym_tab.insert(ident, val);
+  sym_tab.insert_const(ident, val);
   return 0;
 }
-
 
 void ConstInitValAST::Dump() const {
   std::cout << "ConstInitValAST { ";
@@ -125,17 +136,86 @@ void ConstInitValAST::Dump() const {
 }
 
 int ConstInitValAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
-  #ifdef PRINT
+#ifdef PRINT
   std::cout << typeid(*this).name() << std::endl;
 #endif
   if (const_exp->GenIR(global_name_ctr, oss) < 0) {
     std::cerr << "error: const_exp in ConstInitValAST" << std::endl;
     exit(-1);
   }
+  name = const_exp->name;
   return 0;
 }
 
 int ConstInitValAST::eval() { return const_exp->eval(); }
+
+void VarDeclAST::Dump() const {
+  std::cout << "VarDeclAST { ";
+  b_type->Dump();
+  std::cout << ", ";
+  var_def->Dump();
+  std::cout << ", ";
+  for (int i = 0; i < var_def_list_vec.size(); ++i) {
+    var_def_list_vec[i]->Dump();
+    std::cout << ", ";
+  }
+  std::cout << " }";
+}
+
+int VarDeclAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
+  if (var_def->GenIR(global_name_ctr, oss) < 0) {
+    std::cerr << "error: var_def in VarDeclAST" << std::endl;
+    exit(-1);
+  }
+  for (auto &var_def_item : var_def_list_vec) {
+    if (var_def_item->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error: var_def_list in VarDeclAST" << std::endl;
+      exit(-1);
+    }
+  }
+  var_decl = true;
+  return 0;
+}
+
+void VarDefListAST::Dump() const {}
+
+int VarDefListAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
+  return 0;
+}
+
+void VarDefAST::Dump() const {
+  std::cout << "VarDefAST { " << ident << ", ";
+  init_val->Dump();
+  std::cout << " }";
+}
+
+int VarDefAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
+  sym_tab.insert_var(ident, (std::string("@") + ident).c_str());
+  oss << '@' << ident << " = alloc i32\n";
+  if (init_val != nullptr) {
+    if (init_val->GenIR(global_name_ctr, oss) < 0) {
+      std::cerr << "error: init_val in VarDefAST" << std::endl;
+      exit(-1);
+    }
+    oss << "store " << init_val->name << ", @" << ident << "\n";
+  }
+  return 0;
+}
+
+void InitValAST::Dump() const {
+  std::cout << "InitValAST { ";
+  exp->Dump();
+  std::cout << " }";
+}
+
+int InitValAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
+  if (exp->GenIR(global_name_ctr, oss) < 0) {
+    std::cerr << "error: exp in InitValAST" << std::endl;
+    exit(-1);
+  }
+  name = exp->name;
+  return 0;
+}
 
 // -----------------------------------------------------------------
 
@@ -169,7 +249,6 @@ int FuncDefAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 
   return 0;
 }
-
 
 void FuncTypeAST::Dump() const {
   std::cout << "FuncTypeAST { " << func_type << " }";
@@ -216,16 +295,14 @@ int BlockAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
   return 0;
 }
 
-
 void BlockItemListAST::Dump() const {}
 
 int BlockItemListAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
-  #ifdef PRINT
+#ifdef PRINT
   std::cout << typeid(*this).name() << std::endl;
 #endif
   return 0;
 }
-
 
 void BlockItemAST1::Dump() const {
   std::cout << "BlockItemAST1 { ";
@@ -234,7 +311,7 @@ void BlockItemAST1::Dump() const {
 }
 
 int BlockItemAST1::GenIR(int *global_name_ctr, std::ostringstream &oss) {
-  #ifdef PRINT
+#ifdef PRINT
   std::cout << typeid(*this).name() << std::endl;
 #endif
   if (decl->GenIR(global_name_ctr, oss) < 0) {
@@ -244,7 +321,6 @@ int BlockItemAST1::GenIR(int *global_name_ctr, std::ostringstream &oss) {
   return 0;
 }
 
-
 void BlockItemAST2::Dump() const {
   std::cout << "BlockItemAST2 { ";
   stmt->Dump();
@@ -252,7 +328,7 @@ void BlockItemAST2::Dump() const {
 }
 
 int BlockItemAST2::GenIR(int *global_name_ctr, std::ostringstream &oss) {
-  #ifdef PRINT
+#ifdef PRINT
   std::cout << typeid(*this).name() << std::endl;
 #endif
   if (stmt->GenIR(global_name_ctr, oss) < 0) {
@@ -262,14 +338,13 @@ int BlockItemAST2::GenIR(int *global_name_ctr, std::ostringstream &oss) {
   return 0;
 }
 
-
-void StmtAST::Dump() const {
-  std::cout << "StmtAST { ";
+void StmtAST1::Dump() const {
+  std::cout << "StmtAST1 { ";
   exp->Dump();
   std::cout << " }";
 }
 
-int StmtAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
+int StmtAST1::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 #ifdef PRINT
   std::cout << typeid(*this).name() << std::endl;
 #endif
@@ -280,6 +355,34 @@ int StmtAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 
   oss << "ret " << exp->name << "\n";
 
+  var_decl = false;
+  return 0;
+}
+
+void StmtAST2::Dump() const {
+  std::cout << "StmtAST2 { ";
+  l_val->Dump();
+  std::cout << ", ";
+  exp->Dump();
+  std::cout << " }";
+}
+
+int StmtAST2::GenIR(int *global_name_ctr, std::ostringstream &oss) {
+  if (l_val->GenIR(global_name_ctr, oss) < 0) {
+    std::cerr << "error: l_val in StmtAST2" << std::endl;
+    exit(-1);
+  }
+  if (exp->GenIR(global_name_ctr, oss) < 0) {
+    std::cerr << "error: exp in StmtAST2" << std::endl;
+    exit(-1);
+  }
+  auto l_val_ident = static_cast<LValAST *>(l_val.get())->ident;
+  if (sym_tab.exists_var(l_val_ident)) {
+    oss << "store " << exp->name << ", " << '@' << l_val_ident << "\n";
+  } else {
+    std::cerr << "error: variable not found in StmtAST2" << std::endl;
+    exit(-1);
+  }
   return 0;
 }
 
@@ -307,31 +410,40 @@ int ExpAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 
 int ExpAST::eval() { return l_or_exp->eval(); }
 
-
 void LValAST::Dump() const { std::cout << "LValAST { " << ident << " }"; }
 
 int LValAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
-  #ifdef PRINT
+#ifdef PRINT
   std::cout << typeid(*this).name() << std::endl;
 #endif
-  if (sym_tab.exists(ident)) {
-    name = std::to_string(sym_tab.lookup(ident));
-    return 0;
-  } else {
-    std::cerr << "error: variable not found in LValAST" << std::endl;
-    exit(-1);
+
+  switch (sym_tab.exists(ident)) {
+    case 1:   // const
+      name = std::to_string(sym_tab.lookup_const(ident));
+      return 0;
+
+    case 2:   // var
+      //! Cause an additional variable load
+      oss << '%' << *global_name_ctr << " = load " << '@' << ident << "\n";
+      name = '%' + std::to_string(*global_name_ctr);
+      *global_name_ctr += 1;
+      
+      return 0;
+
+    default:  // LVal does not exist or unexpected behavior
+      std::cerr << "error: in LValAST" << std::endl;
+      exit(-1);
   }
 }
 
 int LValAST::eval() {
-  if (sym_tab.exists(ident)) {
-    return sym_tab.lookup(ident);
-  } else {
-    std::cerr << "error: variable not found in LValAST" << std::endl;
+  if (sym_tab.exists(ident) == 1)
+    return sym_tab.lookup_const(ident);
+  else {
+    std::cerr << "error: cannot evaluate variable or undefined" << std::endl;
     exit(-1);
   }
 }
-
 
 void PrimaryExpAST1::Dump() const {
   std::cout << "PrimaryExpAST1 { ( ";
@@ -355,7 +467,6 @@ int PrimaryExpAST1::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 
 int PrimaryExpAST1::eval() { return exp->eval(); }
 
-
 void PrimaryExpAST2::Dump() const {
   std::cout << "PrimaryExpAST2 { ";
   number->Dump();
@@ -378,7 +489,6 @@ int PrimaryExpAST2::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 
 int PrimaryExpAST2::eval() { return number->eval(); }
 
-
 void PrimaryExpAST3::Dump() const {
   std::cout << "PrimaryExpAST3 { ";
   l_val->Dump();
@@ -386,7 +496,7 @@ void PrimaryExpAST3::Dump() const {
 }
 
 int PrimaryExpAST3::GenIR(int *global_name_ctr, std::ostringstream &oss) {
-  #ifdef PRINT
+#ifdef PRINT
   std::cout << typeid(*this).name() << std::endl;
 #endif
   if (l_val->GenIR(global_name_ctr, oss) < 0) {
@@ -400,7 +510,6 @@ int PrimaryExpAST3::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 }
 
 int PrimaryExpAST3::eval() { return l_val->eval(); }
-
 
 void NumberAST::Dump() const {
   std::cout << "NumberAST { " << int_const << " }";
@@ -416,7 +525,6 @@ int NumberAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 }
 
 int NumberAST::eval() { return int_const; }
-
 
 void UnaryExpAST1::Dump() const {
   std::cout << "UnaryExpAST1 { ";
@@ -439,7 +547,6 @@ int UnaryExpAST1::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 }
 
 int UnaryExpAST1::eval() { return primary_exp->eval(); }
-
 
 void UnaryExpAST2::Dump() const {
   std::cout << "UnaryExpAST2 { ";
@@ -534,7 +641,6 @@ int UnaryExpAST2::eval() {
   }
 }
 
-
 void UnaryOpAST::Dump() const {
   std::cout << "UnaryOp { ";
   switch (op) {
@@ -558,7 +664,6 @@ int UnaryOpAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
   return op;
 }
 
-
 void MulExpAST1::Dump() const {
   std::cout << "MulExpAST1 { ";
   unary_exp->Dump();
@@ -580,7 +685,6 @@ int MulExpAST1::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 }
 
 int MulExpAST1::eval() { return unary_exp->eval(); }
-
 
 void MulExpAST2::Dump() const {
   std::cout << "MulExpAST2 { ";
@@ -668,20 +772,19 @@ int MulExpAST2::eval() {
 
   switch (static_cast<BinPriOpAST *>(bin_pri_op.get())->op) {
   case mul_op:
-	return val1 * val2;
+    return val1 * val2;
 
   case div_op:
-	return val1 / val2;
+    return val1 / val2;
 
   case mod_op:
-	return val1 % val2;
+    return val1 % val2;
 
   default:
-	std::cerr << "error: undefined operator in MulExpAST2" << std::endl;
-	exit(-1);
+    std::cerr << "error: undefined operator in MulExpAST2" << std::endl;
+    exit(-1);
   }
 }
-
 
 void BinPriOpAST::Dump() const {
   std::cout << "BinPriOpAST { ";
@@ -706,7 +809,6 @@ int BinPriOpAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
   return op;
 }
 
-
 void AddExpAST1::Dump() const {
   std::cout << "AddExpAST1 { ";
   mul_exp->Dump();
@@ -728,7 +830,6 @@ int AddExpAST1::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 }
 
 int AddExpAST1::eval() { return mul_exp->eval(); }
-
 
 void AddExpAST2::Dump() const {
   std::cout << "AddExpAST2 { ";
@@ -816,7 +917,6 @@ int AddExpAST2::eval() {
   }
 }
 
-
 void BinOpAST::Dump() const {
   std::cout << "BinOpAST { ";
   switch (op) {
@@ -836,7 +936,6 @@ int BinOpAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 #endif
   return op;
 }
-
 
 void RelExpAST1::Dump() const {
   std::cout << "RelExpAST1 { ";
@@ -858,8 +957,7 @@ int RelExpAST1::GenIR(int *global_name_ctr, std::ostringstream &oss) {
   return 0;
 }
 
-int RelExpAST1::eval() { return add_exp->eval(); } 
-
+int RelExpAST1::eval() { return add_exp->eval(); }
 
 void RelExpAST2::Dump() const {
   std::cout << "RelExpAST2 { ";
@@ -969,7 +1067,6 @@ int RelExpAST2::eval() {
   }
 }
 
-
 void RelOpAST::Dump() const {
   std::cout << "RelOpAST { ";
   switch (op) {
@@ -996,7 +1093,6 @@ int RelOpAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
   return op;
 }
 
-
 void EqExpAST1::Dump() const {
   std::cout << "EqExpAST1 { ";
   rel_exp->Dump();
@@ -1018,7 +1114,6 @@ int EqExpAST1::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 }
 
 int EqExpAST1::eval() { return rel_exp->eval(); }
-
 
 void EqExpAST2::Dump() const {
   std::cout << "EqExpAST2 { ";
@@ -1092,7 +1187,7 @@ int EqExpAST2::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 int EqExpAST2::eval() {
   int val1 = eq_exp->eval();
   int val2 = rel_exp->eval();
-  
+
   switch (static_cast<EqOpAST *>(eq_op.get())->op) {
   case equal_op:
     return val1 == val2;
@@ -1103,7 +1198,6 @@ int EqExpAST2::eval() {
     exit(-1);
   }
 }
-
 
 void EqOpAST::Dump() const {
   std::cout << "EqOpAST { ";
@@ -1124,7 +1218,6 @@ int EqOpAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 #endif
   return op;
 }
-
 
 void LAndExpAST1::Dump() const {
   std::cout << "LAndExpAST1 { ";
@@ -1147,7 +1240,6 @@ int LAndExpAST1::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 }
 
 int LAndExpAST1::eval() { return eq_exp->eval(); }
-
 
 void LAndExpAST2::Dump() const {
   std::cout << "LAndExpAST2 { ";
@@ -1205,7 +1297,6 @@ int LAndExpAST2::eval() {
   return val1 && val2;
 }
 
-
 void LOrExpAST1::Dump() const {
   std::cout << "LOrExpAST1 { ";
   l_and_exp->Dump();
@@ -1227,7 +1318,6 @@ int LOrExpAST1::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 }
 
 int LOrExpAST1::eval() { return l_and_exp->eval(); }
-
 
 void LOrExpAST2::Dump() const {
   std::cout << "LOrExpAST2 { ";
@@ -1280,7 +1370,6 @@ int LOrExpAST2::eval() {
   return val1 || val2;
 }
 
-
 void ConstExpAST::Dump() const {
   std::cout << "ConstExpAST { ";
   exp->Dump();
@@ -1288,7 +1377,7 @@ void ConstExpAST::Dump() const {
 }
 
 int ConstExpAST::GenIR(int *global_name_ctr, std::ostringstream &oss) {
-  #ifdef PRINT
+#ifdef PRINT
   std::cout << typeid(*this).name() << std::endl;
 #endif
   if (exp->GenIR(global_name_ctr, oss) < 0) {
