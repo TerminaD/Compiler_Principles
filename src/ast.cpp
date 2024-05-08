@@ -1275,17 +1275,12 @@ int LAndExpAST2::GenIR(int *global_name_ctr, std::ostringstream &oss) {
 #endif
 
   // a && b <==> !!a && !!b
-  oss << '%' << *global_name_ctr << " = eq 0, " << l_and_exp->name << "\n";
-  oss << '%' << *global_name_ctr + 1 << " = eq 0, " << '%' << *global_name_ctr
-      << "\n";
-  oss << '%' << *global_name_ctr + 2 << " = eq 0, " << eq_exp->name << "\n";
-  oss << '%' << *global_name_ctr + 3 << " = eq 0, " << '%'
-      << *global_name_ctr + 2 << "\n";
-  oss << '%' << *global_name_ctr + 4 << " = and " << '%' << *global_name_ctr + 1
-      << ", " << '%' << *global_name_ctr + 3 << "\n";
+  oss << '%' << *global_name_ctr << " = ne 0, " << l_and_exp->name << "\n";
+  oss << '%' << *global_name_ctr + 1 << " = ne 0, " << eq_exp->name << "\n";
+  oss << '%' << *global_name_ctr + 2 << " = and " << '%' << *global_name_ctr << ", " << '%' << *global_name_ctr + 1 << "\n";
 
-  name = '%' + std::to_string(*global_name_ctr + 4);
-  *global_name_ctr += 5;
+  name = '%' + std::to_string(*global_name_ctr + 2);
+  *global_name_ctr += 3;
 
   return 0;
 }
