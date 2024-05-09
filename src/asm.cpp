@@ -261,10 +261,10 @@ void Visit(const koopa_raw_binary_t &bin,
   switch (bin.op) {
     // We use registers out of order to use 1 less register
     case KOOPA_RBO_NOT_EQ:
-      out << "sub " << reg(*global_reg_ctr + 1) << ", " << reg(*reg_ctr1) << ", " << reg(*reg_ctr2) << '\n';
-      out << "snez " << reg(*global_reg_ctr) << ", " << reg(*global_reg_ctr + 1) << '\n';
-      *reg_ctr = *global_reg_ctr;
-      *global_reg_ctr += 1;
+      out << "sub " << reg(*global_reg_ctr) << ", " << reg(*reg_ctr1) << ", " << reg(*reg_ctr2) << '\n';
+      out << "snez " << reg(*global_reg_ctr + 1) << ", " << reg(*global_reg_ctr) << '\n';
+      *reg_ctr = *global_reg_ctr + 1;
+      *global_reg_ctr += 2;
       break;
 
     case KOOPA_RBO_EQ:
